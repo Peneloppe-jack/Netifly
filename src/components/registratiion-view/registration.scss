@@ -1,0 +1,26 @@
+#RegistrationView
+*{
+  box-sizing: border-box;
+  font-family: 'Lora Sans', sans-serif;
+  background: #073763;
+  width: 100%;
+  display: block;
+}
+  .registerContainer{
+    background: #073763;
+    width: 100%;
+    height: 100%;
+  }
+  
+  
+  .registerCard bg-light text-black {
+    width: 100%;
+    max-width: 100px;
+    margin: auto;
+
+  }
+  
+  .registerButton {
+    width: 100%;
+    display: block;
+  }
