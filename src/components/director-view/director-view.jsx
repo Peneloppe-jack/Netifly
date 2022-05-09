@@ -19,7 +19,7 @@ export class DirectorView extends React.Component{
         <Row>
           <Col med={4} className="director-view bg-light text-black">
           <div className="director-name" />
-          <span className="label">Bio </span>
+          <span className="label">Bio:</span>
           <span className="value">{director.Bio}</span>
           </Col>
         </Row>

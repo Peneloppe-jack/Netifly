@@ -9,14 +9,14 @@ import Col from 'react-bootstrap/Col';
 
 //import { Button } from '../button-view/button-view';
 
-import { MovieCard } from '../movie-card/movie-card';
-import { MovieView } from '../movie-view/movie-view';
-import { LoginView } from '../login-view/login-view';
-import { RegistrationView } from '../registration-view/registration-view';
-import { GenreView } from "../genre-view/genre.view";
-import { DirectorView } from "../director-view/director-view";
-import { ProfileView } from "../profile-view/profile-view";
-import { NavbarView } from "../navbar-view/navbar-view";
+import { MovieCard } from '../movie-card/movie-card.jsx';
+import { MovieView } from '../movie-view/movie-view.jsx';
+import { LoginView } from '../login-view/login-view.jsx';
+import { RegistrationView } from '../registration-view/registration-view.jsx';
+import { GenreView } from "../genre-view/genre-view.jsx";
+import { DirectorView } from "../director-view/director-view.jsx";
+import { ProfileView } from "../profile-view/profile-view.jsx";
+import { NavbarView } from "../navbar-view/navbar-view.jsx";
 
 import './main-view.scss'
 
@@ -97,7 +97,7 @@ render() {
       <NavbarView user={user} />
       </Row>
 
-      <Row className="main-view justify-content-md-center">
+      <Row className="main-view">
 
         <Route exact path="/" render={() => {
             if (!user) return <Col><LoginView onLoggedIn={(user) => this.onLoggedIn(user)} /> </Col>
@@ -108,11 +108,12 @@ render() {
           }}
         />
 
-        <Route path="/login" render={() => {
-                    if (user) return <Redirect to="/" />;
-                    return <LoginView onLoggedIn = {data => this.onLoggedIn(data)} />  
+        <Route exact path="/login" render={() => {
+                    if (user) {return <Redirect to="/" />;
+                    return <LoginView onLoggedIn = {(data) => this.onLoggedIn(data)} />  
                 }}
-                />
+              }
+                /> 
 
         <Route path="/register" render={() => {
             if (user) return <Redirect to="/" />;

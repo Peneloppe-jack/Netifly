@@ -1,6 +1,8 @@
 #DirectorView
-*{
-  box-sizing: border-box;
+.moviesContainer {
+  background: #073763;
+  width: 100%;
+  height: 100vh;
 }
 .director {
   color: black;
@@ -13,5 +15,3 @@
   margin: 0 auto;
   width: 200px;
 }
-
-//A card would be better

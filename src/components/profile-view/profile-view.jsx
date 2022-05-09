@@ -1,5 +1,5 @@
 import React from "react";
-//import "./profile-view.scss";
+import "./profile-view.scss";
 import PropTypes from "prop-types";
 import { Container, Card, Button, Row, Col, Form, FormGroup, FormControl } from "react-bootstrap";
 import axios from "axios";
@@ -152,158 +152,120 @@ export class ProfileView extends React.Component {
         }
 
         return (
-           
-            <Container fluid>
- 
+        
+<Container fluid>
+    <Row>
+    
+              
+                    <p>Welcome to your MyFlix Profile</p>
+            
+            </Row>           
+            <Row>               
+            <Col xs ={20} sm={4}>
+                    <Card>
+                    <Card.Body>
+                    <Form className="Update"style={{ textAlign: 'left'}}
+                
+                    onSubmit={(e) =>
+                        this.editUser(
+                            e,
+                            this.Username,
+                            this.Password,
+                            this.Email,
+                            this.Birthday
+                        )
+                    }
+                     >
+                    <FormGroup>
+                        <Form.Label>Username</Form.Label>
+                        <FormControl
+                            type="text"
+                            name="Username"
+                            placeholder="New Username"
+                            value={Username}
+                            onChange={(e) => this.setUsername(e.target.value)}
+                            required
+                        />
+                    </FormGroup> 
+                    <FormGroup>
+                        <Form.Label>Password</Form.Label>
+                        <FormControl
+                            type="password"
+                            name="Password"
+                            placeholder="New Password"
+                            value=""
+                            onChange={(e) => this.setPassword(e.target.value)}
+                            required
+                        />
+                    </FormGroup>
+                    <FormGroup>
+                        <Form.Label>Email</Form.Label>
+                        <FormControl
+                            type="email"
+                            name="Email"
+                            placeholder="Enter Email"
+                            value={Email}
+                            onChange={(e) => this.setEmail(e.target.value)}
+                            required
+                        />
+                    </FormGroup>
+                    <FormGroup>
+                        <Form.Label>Birthday</Form.Label>
+                        <FormControl
+                            type="date"
+                            name="Birthday"
+                            value={Birthday}
+                            onChange={(e) => this.setBirthdaye(e.target.value)}
+                            required
+                        />
+                    </FormGroup>
+                    <div>
+                        <Button variant="success" type="submit" onClick={this.editUser}>Update Data</Button>
+                    <p> 
+                        *Updates will be displayed after next Login
+                    </p>
+                    </div>
+                     </Form>
+                    </Card.Body>
+                    </Card>
+            </Col>
+            </Row>
 
- <Row>
-  <Col sx>
-
-                <Row>
-                <Col xs ={12} sm={4}>
-                <Card className="Profile Info" style={{ textAlign: 'left'}} >
-                            <Card.Body>
-                                <Card.Title>Profile Info </Card.Title>
-                                    <p> Username</p>
-                                </Card.Body>
-                                </Card>
-                                </Col>
-                                
-                            </Row>
-                            <Row>               
-                            <Col xs ={12} sm={8}>
-                              <Card>
-                              <Card.Body>
-                                  <Form className="Update"style={{ textAlign: 'left'}}
-                                
-                                    onSubmit={(e) =>
-                                        this.editUser(
-                                            e,
-                                            this.Username,
-                                            this.Password,
-                                            this.Email,
-                                            this.Birthday
-                                        )
-                                    }
-                                >
-                                
-                                    <FormGroup>
-                                        <Form.Label>Username</Form.Label>
-                                        <FormControl
-                                            type="text"
-                                            name="Username"
-                                            placeholder="New Username"
-                                            value={Username}
-                                            onChange={(e) => this.setUsername(e.target.value)}
-                                            required
-                                        />
-                                    </FormGroup>
-
-                                    <FormGroup>
-                                        <Form.Label>Password</Form.Label>
-                                        <FormControl
-                                            type="password"
-                                            name="Password"
-                                            placeholder="New Password"
-                                            value=""
-                                            onChange={(e) => this.setPassword(e.target.value)}
-                                            required
-                                        />
-                                    </FormGroup>
-
-                                    <FormGroup>
-                                        <Form.Label>Email</Form.Label>
-                                        <FormControl
-                                            type="email"
-                                            name="Email"
-                                            placeholder="Enter Email"
-                                            value={Email}
-                                            onChange={(e) => this.setEmail(e.target.value)}
-                                            required
-                                        />
-                                    </FormGroup>
-
-                                    <FormGroup>
-                                        <Form.Label>Birthday</Form.Label>
-                                        <FormControl
-                                            type="date"
-                                            name="Birthday"
-                                            value={Birthday}
-                                            onChange={(e) => this.setBirthdaye(e.target.value)}
-                                            required
-                                        />
-                                    </FormGroup>
-                                    <div>
-                                        <Button variant="success" type="submit" onClick={this.editUser}>Update Data</Button>
-                                    
-                                        <Button variant="secondary" onClick={() => this.onDeleteUser()}>Delete Profile</Button>
-                                    <p> 
-                                        *Updates will be displayed after next Login
-                                    </p>
-                                    </div>
-                                </Form>
-                            </Card.Body>
-                        </Card>
-                    </Col>
-                </Row>
-                <Row>
-                     <Col xs = {2}>
-                        <h4> Favorites Movies</h4>
+            <Row>
+            <Col xs = {12}>
+                        <h4> Favorite Movies</h4>
                      
                         <Card>
-                            <Card.Body>
+                        <Card.Body>
                                 {FavoriteMovies.length === 0 && (
                                     <div className="text-center">No favorite movies</div>
                                 )}
-                                <Row className="favorite-movies-container">
+                                <Card id="favorite-movies-container"/>
                                     {FavoriteMovies.length > 0 && movies.map((movie) => {
                                         if (movie._id === FavoriteMovies.find((fav) => fav === movie._id)
                                         ) {
-                                            return (
-                                                <Card sx={12} md= {6}lg={3} className="favorite-movie" key={movie._id} >
-                                                    <Card.Img
-                                                        className="favorite-movie-image"
-                                                        variant="top"
-                                                        src={movie.ImageURL}
-                                                    />
-                                                    <Card.Body>
-                                                        <Card.Title className="movie-title">
-                                                            {movie.Title}
-                                                        </Card.Title>
-                                                        <Button value={movie._id} onClick={(e) => this.onRemoveFavorite(e, movie)}>Remove from List</Button>
-                                                    </Card.Body>
-                                                </Card>
-                                            );
-                                        }
-                                    })}
-                                </Row>
-                            </Card.Body>
+                                 return (
+                                <Card sx={12} md= {6}lg={3} className="favorite-movie" key={movie._id} >
+                                    <Card.Img
+                                    className="favorite-movie-image"
+                                    variant="top"
+                                    src={movie.ImageURL}/>
+                                <Card.Body>
+                                <Card.Title className="movie-title">
+                                    {movie.Title} <Button value={movie._id} onClick={(e) => this.onRemoveFavorite(e, movie)}>Remove from List</Button>
+                                </Card.Title>
+                 
+                                 </Card.Body>
+                                </Card>
+                                 )
+                           
+                                 };
+                        } )}
+                        </Card.Body>
                         </Card>
-                  
-                    </Col>
-                </Row>
+                        <Button variant="red" onClick={() => this.onDeleteUser()}>Delete Profile</Button>
                 </Col>
-                </Row>
-                
-            </Container>
-        )
-    }
-}
-
-
-ProfileView.propTypes = {
-    movies: PropTypes.arrayOf(PropTypes.shape({
-        Title: PropTypes.string.isRequired,
-        Description: PropTypes.string.isRequired,
-        ImageURL: PropTypes.string.isRequired,
-        Genre: PropTypes.shape({
-            Name: PropTypes.string.isRequired,
-            Description: PropTypes.string.isRequired,
-        }).isRequired,
-        Director: PropTypes.shape({
-            Bio: PropTypes.string.isRequired,
-         
-        }).isRequired,
-    })).isRequired,
-    onBackClick: PropTypes.func.isRequired
-}
+                </Row>  
+ </Container>
+ 
+)}}
