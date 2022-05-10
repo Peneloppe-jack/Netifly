@@ -1011,37 +1011,36 @@ var _react = require("react");
 var _reactDefault = parcelHelpers.interopDefault(_react);
 var _reactDom = require("react-dom");
 var _reactDomDefault = parcelHelpers.interopDefault(_reactDom);
-var _container = require("react-bootstrap/Container");
-var _containerDefault = parcelHelpers.interopDefault(_container);
-var _redux = require("redux");
-var _reduxDefault = parcelHelpers.interopDefault(_redux);
 var _reactRedux = require("react-redux");
 var _reducersJs = require("./reducers/reducers.js");
 var _reducersJsDefault = parcelHelpers.interopDefault(_reducersJs);
 var _reduxDevtoolsExtension = require("redux-devtools-extension");
+var _redux = require("redux");
+var _reduxDefault = parcelHelpers.interopDefault(_redux);
+var _container = require("react-bootstrap/Container");
+var _containerDefault = parcelHelpers.interopDefault(_container);
 var _mainView = require("./components/main-view/main-view");
-var _mainViewDefault = parcelHelpers.interopDefault(_mainView);
 var _indexScss = require("./index.scss");
-const store = _reduxDefault.default(_reducersJsDefault.default, _reduxDevtoolsExtension.devToolsEnhancer());
+const store = _reduxDefault.default(_reduxDevtoolsExtension.devToolsEnhancer(), _reducersJsDefault.default);
 // Main component (will eventually use all the others)
 class MyFlixApplication extends _reactDefault.default.Component {
     render() {
         return /*#__PURE__*/ _jsxDevRuntime.jsxDEV(_reactRedux.Provider, {
             store: store,
             children: /*#__PURE__*/ _jsxDevRuntime.jsxDEV(_containerDefault.default, {
-                children: /*#__PURE__*/ _jsxDevRuntime.jsxDEV(_mainViewDefault.default, {}, void 0, false, {
+                children: /*#__PURE__*/ _jsxDevRuntime.jsxDEV(_mainView.MainView, {}, void 0, false, {
                     fileName: "src/index.jsx",
-                    lineNumber: 21,
+                    lineNumber: 22,
                     columnNumber: 9
                 }, this)
             }, void 0, false, {
                 fileName: "src/index.jsx",
-                lineNumber: 20,
+                lineNumber: 21,
                 columnNumber: 7
             }, this)
         }, void 0, false, {
             fileName: "src/index.jsx",
-            lineNumber: 19,
+            lineNumber: 20,
             columnNumber: 7
         }, this);
     }
@@ -38297,33 +38296,27 @@ var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
 parcelHelpers.defineInteropFlag(exports);
 parcelHelpers.export(exports, "SET_MOVIES", ()=>SET_MOVIES
 );
-parcelHelpers.export(exports, "SET_FILTER", ()=>SET_FILTER
-);
 parcelHelpers.export(exports, "SET_USER", ()=>SET_USER
 );
-parcelHelpers.export(exports, "UPDATE_USER", ()=>UPDATE_USER
+parcelHelpers.export(exports, "SET_FILTER", ()=>SET_FILTER
+);
+parcelHelpers.export(exports, "SET_USERDATA", ()=>SET_USERDATA
 );
 parcelHelpers.export(exports, "setMovies", ()=>setMovies
 );
-parcelHelpers.export(exports, "setFilter", ()=>setFilter
-);
 parcelHelpers.export(exports, "setUser", ()=>setUser
 );
-parcelHelpers.export(exports, "updateUser", ()=>updateUser
+parcelHelpers.export(exports, "setFilter", ()=>setFilter
+);
+parcelHelpers.export(exports, "setUserData", ()=>setUserData
 );
 const SET_MOVIES = 'SET_MOVIES';
-const SET_FILTER = 'SET_FILTER';
 const SET_USER = 'SET_USER';
-const UPDATE_USER = 'UPDATE_USER';
+const SET_FILTER = 'SET_FILTER';
+const SET_USERDATA = "SET_USERDATA";
 function setMovies(value) {
     return {
         type: SET_MOVIES,
-        value
-    };
-}
-function setFilter(value) {
-    return {
-        type: SET_FILTER,
         value
     };
 }
@@ -38333,17 +38326,16 @@ function setUser(value) {
         value
     };
 }
-function updateUser(value = {
-    Username: '',
-    Password: '',
-    Email: '',
-    Birthday: '',
-    Favorites: []
-}, field = null) {
+function setFilter(value) {
     return {
-        type: UPDATE_USER,
-        value,
-        field
+        type: SET_FILTER,
+        value
+    };
+}
+function setUserData(value) {
+    return {
+        type: SET_USERDATA,
+        value
     };
 }
 
