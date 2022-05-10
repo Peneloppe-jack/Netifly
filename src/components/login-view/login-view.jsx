@@ -10,11 +10,10 @@ import './login-view.scss'
 export function LoginView(props) {
   const [ username, setUsername ] = useState('');
   const [ password, setPassword ] = useState('');
-// Declare hook for each input
+
   const [ usernameErr, setUsernameErr ] = useState('');
   const [ passwordErr, setPasswordErr ] = useState('');
 
-// validate user inputs with Authorsisation and authentification set on SERVERside
 const validate = () => {
     let isReq = true;
     if(!username){
@@ -42,7 +41,6 @@ const handleSubmit = (e) => {
   e.preventDefault();
   const isReq = validate();
   if(isReq) {
-    /* Send request to the server for authentication */
     axios.post('https://mysterious-wildwood-desperado.herokuapp.com/login', {
         Username: username,
         Password: password

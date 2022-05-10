@@ -2,6 +2,7 @@ import React, {useState} from "react";
 import axios from "axios";
 import PropTypes from 'prop-types';
 
+
 import { CardGroup, Form, Button, Card, Container, Col, Row} from 'react-bootstrap';
 
 import './registration-view.scss';
@@ -14,7 +15,6 @@ export function RegistrationView(props) {
   const [email, setEmail] = useState('');
   const [birthday, setBirthday] = useState('');
 
-  //Declare hook for each input
   const [usernameErr, setUsernameErr] = useState('');
   const [passwordErr, setPasswordErr] = useState('');
   const [emailErr, setEmailErr] = useState('');
