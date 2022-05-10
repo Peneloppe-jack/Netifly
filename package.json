@@ -2,6 +2,8 @@
   "name": "netifly",
   "version": "1.0.0",
   "description": "",
+  "source": "src/index.html",
+  "main": "index.jsx",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "prebuild": "rm -rf dist/",
@@ -27,10 +29,6 @@
     "@parcel/transformer-sass": "^2.0.0-rc.0",
     "yaml": "^2.0.1",
     "yarn": "^1.22.18"
-  },
-  "@parcel/transformer-js": {
-    "inlineFS": false,
-    "inlineEnvironment": false
   },
   "devDependencies": {
     "parcel": "^2.5.0",
