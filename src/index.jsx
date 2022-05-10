@@ -11,9 +11,9 @@ import { MainView }  from "./components/main-view/main-view";
 
 import './index.scss';
 
-const store = createStore ( devToolsEnhancer(), moviesApp);
 
-// Main component (will eventually use all the others)
+
+const store = createStore ( devToolsEnhancer(), moviesApp);
 class MyFlixApplication extends React.Component {
  render() {
     return (
