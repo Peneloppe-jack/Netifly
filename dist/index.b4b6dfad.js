@@ -1022,7 +1022,6 @@ var _containerDefault = parcelHelpers.interopDefault(_container);
 var _mainView = require("./components/main-view/main-view");
 var _indexScss = require("./index.scss");
 const store = _reduxDefault.default(_reduxDevtoolsExtension.devToolsEnhancer(), _reducersJsDefault.default);
-// Main component (will eventually use all the others)
 class MyFlixApplication extends _reactDefault.default.Component {
     render() {
         return /*#__PURE__*/ _jsxDevRuntime.jsxDEV(_reactRedux.Provider, {
@@ -24078,74 +24077,77 @@ var utils = require('../utils');
 }
 module.exports = toFormData;
 
-},{"buffer":"h8sUB","../utils":"5By4s"}],"h8sUB":[function(require,module,exports) {
+},{"buffer":"fCgem","../utils":"5By4s"}],"fCgem":[function(require,module,exports) {
 /*!
  * The buffer module from node.js, for the browser.
  *
- * @author   Feross Aboukhadijeh <https://feross.org>
+ * @author   Feross Aboukhadijeh <http://feross.org>
  * @license  MIT
  */ /* eslint-disable no-proto */ 'use strict';
+var global = arguments[3];
 var base64 = require('base64-js');
 var ieee754 = require('ieee754');
-var customInspectSymbol = typeof Symbol === 'function' && typeof Symbol['for'] === 'function' // eslint-disable-line dot-notation
- ? Symbol['for']('nodejs.util.inspect.custom') // eslint-disable-line dot-notation
- : null;
+var isArray = require('isarray');
 exports.Buffer = Buffer;
 exports.SlowBuffer = SlowBuffer;
 exports.INSPECT_MAX_BYTES = 50;
-var K_MAX_LENGTH = 0x7fffffff;
-exports.kMaxLength = K_MAX_LENGTH;
 /**
  * If `Buffer.TYPED_ARRAY_SUPPORT`:
  *   === true    Use Uint8Array implementation (fastest)
- *   === false   Print warning and recommend using `buffer` v4.x which has an Object
- *               implementation (most compatible, even IE6)
+ *   === false   Use Object implementation (most compatible, even IE6)
  *
  * Browsers that support typed arrays are IE 10+, Firefox 4+, Chrome 7+, Safari 5.1+,
  * Opera 11.6+, iOS 4.2+.
  *
- * We report that the browser does not support typed arrays if the are not subclassable
- * using __proto__. Firefox 4-29 lacks support for adding new properties to `Uint8Array`
- * (See: https://bugzilla.mozilla.org/show_bug.cgi?id=695438). IE 10 lacks support
- * for __proto__ and has a buggy typed array implementation.
- */ Buffer.TYPED_ARRAY_SUPPORT = typedArraySupport();
-if (!Buffer.TYPED_ARRAY_SUPPORT && typeof console !== 'undefined' && typeof console.error === 'function') console.error("This browser lacks typed array (Uint8Array) support which is required by `buffer` v5.x. Use `buffer` v4.x if you require old browser support.");
+ * Due to various browser bugs, sometimes the Object implementation will be used even
+ * when the browser supports typed arrays.
+ *
+ * Note:
+ *
+ *   - Firefox 4-29 lacks support for adding new properties to `Uint8Array` instances,
+ *     See: https://bugzilla.mozilla.org/show_bug.cgi?id=695438.
+ *
+ *   - Chrome 9-10 is missing the `TypedArray.prototype.subarray` function.
+ *
+ *   - IE10 has a broken `TypedArray.prototype.subarray` function which returns arrays of
+ *     incorrect length in some situations.
+
+ * We detect these buggy browsers and set `Buffer.TYPED_ARRAY_SUPPORT` to `false` so they
+ * get the Object implementation, which is slower but behaves correctly.
+ */ Buffer.TYPED_ARRAY_SUPPORT = global.TYPED_ARRAY_SUPPORT !== undefined ? global.TYPED_ARRAY_SUPPORT : typedArraySupport();
+/*
+ * Export kMaxLength after typed array support is determined.
+ */ exports.kMaxLength = kMaxLength();
 function typedArraySupport() {
-    // Can typed array instances can be augmented?
     try {
         var arr = new Uint8Array(1);
-        var proto = {
+        arr.__proto__ = {
+            __proto__: Uint8Array.prototype,
             foo: function() {
                 return 42;
             }
         };
-        Object.setPrototypeOf(proto, Uint8Array.prototype);
-        Object.setPrototypeOf(arr, proto);
-        return arr.foo() === 42;
+        return arr.foo() === 42 && typeof arr.subarray === 'function' && arr.subarray(1, 1).byteLength === 0 // ie10 has broken `subarray`
+        ;
     } catch (e) {
         return false;
     }
 }
-Object.defineProperty(Buffer.prototype, 'parent', {
-    enumerable: true,
-    get: function() {
-        if (!Buffer.isBuffer(this)) return undefined;
-        return this.buffer;
+function kMaxLength() {
+    return Buffer.TYPED_ARRAY_SUPPORT ? 0x7fffffff : 0x3fffffff;
+}
+function createBuffer(that, length) {
+    if (kMaxLength() < length) throw new RangeError('Invalid typed array length');
+    if (Buffer.TYPED_ARRAY_SUPPORT) {
+        // Return an augmented `Uint8Array` instance, for best performance
+        that = new Uint8Array(length);
+        that.__proto__ = Buffer.prototype;
+    } else {
+        // Fallback: Return an object instance of the Buffer class
+        if (that === null) that = new Buffer(length);
+        that.length = length;
     }
-});
-Object.defineProperty(Buffer.prototype, 'offset', {
-    enumerable: true,
-    get: function() {
-        if (!Buffer.isBuffer(this)) return undefined;
-        return this.byteOffset;
-    }
-});
-function createBuffer(length) {
-    if (length > K_MAX_LENGTH) throw new RangeError('The value "' + length + '" is invalid for option "size"');
-    // Return an augmented `Uint8Array` instance
-    var buf = new Uint8Array(length);
-    Object.setPrototypeOf(buf, Buffer.prototype);
-    return buf;
+    return that;
 }
 /**
  * The Buffer constructor returns instances of `Uint8Array` that have their
@@ -24156,28 +24158,26 @@ function createBuffer(length) {
  *
  * The `Uint8Array` prototype remains unmodified.
  */ function Buffer(arg, encodingOrOffset, length) {
+    if (!Buffer.TYPED_ARRAY_SUPPORT && !(this instanceof Buffer)) return new Buffer(arg, encodingOrOffset, length);
     // Common case.
     if (typeof arg === 'number') {
-        if (typeof encodingOrOffset === 'string') throw new TypeError('The "string" argument must be of type string. Received type number');
-        return allocUnsafe(arg);
+        if (typeof encodingOrOffset === 'string') throw new Error('If encoding is specified then the first argument must be a string');
+        return allocUnsafe(this, arg);
     }
-    return from(arg, encodingOrOffset, length);
+    return from(this, arg, encodingOrOffset, length);
 }
 Buffer.poolSize = 8192 // not used by this implementation
 ;
-function from(value, encodingOrOffset, length) {
-    if (typeof value === 'string') return fromString(value, encodingOrOffset);
-    if (ArrayBuffer.isView(value)) return fromArrayView(value);
-    if (value == null) throw new TypeError("The first argument must be one of type string, Buffer, ArrayBuffer, Array, or Array-like Object. Received type " + typeof value);
-    if (isInstance(value, ArrayBuffer) || value && isInstance(value.buffer, ArrayBuffer)) return fromArrayBuffer(value, encodingOrOffset, length);
-    if (typeof SharedArrayBuffer !== 'undefined' && (isInstance(value, SharedArrayBuffer) || value && isInstance(value.buffer, SharedArrayBuffer))) return fromArrayBuffer(value, encodingOrOffset, length);
-    if (typeof value === 'number') throw new TypeError('The "value" argument must not be of type number. Received type number');
-    var valueOf = value.valueOf && value.valueOf();
-    if (valueOf != null && valueOf !== value) return Buffer.from(valueOf, encodingOrOffset, length);
-    var b = fromObject(value);
-    if (b) return b;
-    if (typeof Symbol !== 'undefined' && Symbol.toPrimitive != null && typeof value[Symbol.toPrimitive] === 'function') return Buffer.from(value[Symbol.toPrimitive]('string'), encodingOrOffset, length);
-    throw new TypeError("The first argument must be one of type string, Buffer, ArrayBuffer, Array, or Array-like Object. Received type " + typeof value);
+// TODO: Legacy, not needed anymore. Remove in next major version.
+Buffer._augment = function(arr) {
+    arr.__proto__ = Buffer.prototype;
+    return arr;
+};
+function from(that, value, encodingOrOffset, length) {
+    if (typeof value === 'number') throw new TypeError('"value" argument must not be a number');
+    if (typeof ArrayBuffer !== 'undefined' && value instanceof ArrayBuffer) return fromArrayBuffer(that, value, encodingOrOffset, length);
+    if (typeof value === 'string') return fromString(that, value, encodingOrOffset);
+    return fromObject(that, value);
 }
 /**
  * Functionally equivalent to Buffer(arg, encoding) but throws a TypeError
@@ -24187,99 +24187,107 @@ function from(value, encodingOrOffset, length) {
  * Buffer.from(buffer)
  * Buffer.from(arrayBuffer[, byteOffset[, length]])
  **/ Buffer.from = function(value, encodingOrOffset, length) {
-    return from(value, encodingOrOffset, length);
+    return from(null, value, encodingOrOffset, length);
 };
-// Note: Change prototype *after* Buffer.from is defined to workaround Chrome bug:
-// https://github.com/feross/buffer/pull/148
-Object.setPrototypeOf(Buffer.prototype, Uint8Array.prototype);
-Object.setPrototypeOf(Buffer, Uint8Array);
-function assertSize(size) {
-    if (typeof size !== 'number') throw new TypeError('"size" argument must be of type number');
-    else if (size < 0) throw new RangeError('The value "' + size + '" is invalid for option "size"');
+if (Buffer.TYPED_ARRAY_SUPPORT) {
+    Buffer.prototype.__proto__ = Uint8Array.prototype;
+    Buffer.__proto__ = Uint8Array;
+    if (typeof Symbol !== 'undefined' && Symbol.species && Buffer[Symbol.species] === Buffer) // Fix subarray() in ES2016. See: https://github.com/feross/buffer/pull/97
+    Object.defineProperty(Buffer, Symbol.species, {
+        value: null,
+        configurable: true
+    });
 }
-function alloc(size, fill, encoding) {
+function assertSize(size) {
+    if (typeof size !== 'number') throw new TypeError('"size" argument must be a number');
+    else if (size < 0) throw new RangeError('"size" argument must not be negative');
+}
+function alloc(that, size, fill, encoding) {
     assertSize(size);
-    if (size <= 0) return createBuffer(size);
+    if (size <= 0) return createBuffer(that, size);
     if (fill !== undefined) // Only pay attention to encoding if it's a string. This
     // prevents accidentally sending in a number that would
-    // be interpreted as a start offset.
-    return typeof encoding === 'string' ? createBuffer(size).fill(fill, encoding) : createBuffer(size).fill(fill);
-    return createBuffer(size);
+    // be interpretted as a start offset.
+    return typeof encoding === 'string' ? createBuffer(that, size).fill(fill, encoding) : createBuffer(that, size).fill(fill);
+    return createBuffer(that, size);
 }
 /**
  * Creates a new filled Buffer instance.
  * alloc(size[, fill[, encoding]])
  **/ Buffer.alloc = function(size, fill, encoding) {
-    return alloc(size, fill, encoding);
+    return alloc(null, size, fill, encoding);
 };
-function allocUnsafe(size) {
+function allocUnsafe(that, size) {
     assertSize(size);
-    return createBuffer(size < 0 ? 0 : checked(size) | 0);
+    that = createBuffer(that, size < 0 ? 0 : checked(size) | 0);
+    if (!Buffer.TYPED_ARRAY_SUPPORT) for(var i = 0; i < size; ++i)that[i] = 0;
+    return that;
 }
 /**
  * Equivalent to Buffer(num), by default creates a non-zero-filled Buffer instance.
  * */ Buffer.allocUnsafe = function(size) {
-    return allocUnsafe(size);
+    return allocUnsafe(null, size);
 };
 /**
  * Equivalent to SlowBuffer(num), by default creates a non-zero-filled Buffer instance.
  */ Buffer.allocUnsafeSlow = function(size) {
-    return allocUnsafe(size);
+    return allocUnsafe(null, size);
 };
-function fromString(string, encoding) {
+function fromString(that, string, encoding) {
     if (typeof encoding !== 'string' || encoding === '') encoding = 'utf8';
-    if (!Buffer.isEncoding(encoding)) throw new TypeError('Unknown encoding: ' + encoding);
+    if (!Buffer.isEncoding(encoding)) throw new TypeError('"encoding" must be a valid string encoding');
     var length = byteLength(string, encoding) | 0;
-    var buf = createBuffer(length);
-    var actual = buf.write(string, encoding);
+    that = createBuffer(that, length);
+    var actual = that.write(string, encoding);
     if (actual !== length) // Writing a hex string, for example, that contains invalid characters will
     // cause everything after the first invalid character to be ignored. (e.g.
     // 'abxxcd' will be treated as 'ab')
-    buf = buf.slice(0, actual);
-    return buf;
+    that = that.slice(0, actual);
+    return that;
 }
-function fromArrayLike(array) {
+function fromArrayLike(that, array) {
     var length = array.length < 0 ? 0 : checked(array.length) | 0;
-    var buf = createBuffer(length);
-    for(var i = 0; i < length; i += 1)buf[i] = array[i] & 255;
-    return buf;
+    that = createBuffer(that, length);
+    for(var i = 0; i < length; i += 1)that[i] = array[i] & 255;
+    return that;
 }
-function fromArrayView(arrayView) {
-    if (isInstance(arrayView, Uint8Array)) {
-        var copy = new Uint8Array(arrayView);
-        return fromArrayBuffer(copy.buffer, copy.byteOffset, copy.byteLength);
-    }
-    return fromArrayLike(arrayView);
+function fromArrayBuffer(that, array, byteOffset, length) {
+    array.byteLength // this throws if `array` is not a valid ArrayBuffer
+    ;
+    if (byteOffset < 0 || array.byteLength < byteOffset) throw new RangeError('\'offset\' is out of bounds');
+    if (array.byteLength < byteOffset + (length || 0)) throw new RangeError('\'length\' is out of bounds');
+    if (byteOffset === undefined && length === undefined) array = new Uint8Array(array);
+    else if (length === undefined) array = new Uint8Array(array, byteOffset);
+    else array = new Uint8Array(array, byteOffset, length);
+    if (Buffer.TYPED_ARRAY_SUPPORT) {
+        // Return an augmented `Uint8Array` instance, for best performance
+        that = array;
+        that.__proto__ = Buffer.prototype;
+    } else // Fallback: Return an object instance of the Buffer class
+    that = fromArrayLike(that, array);
+    return that;
 }
-function fromArrayBuffer(array, byteOffset, length) {
-    if (byteOffset < 0 || array.byteLength < byteOffset) throw new RangeError('"offset" is outside of buffer bounds');
-    if (array.byteLength < byteOffset + (length || 0)) throw new RangeError('"length" is outside of buffer bounds');
-    var buf;
-    if (byteOffset === undefined && length === undefined) buf = new Uint8Array(array);
-    else if (length === undefined) buf = new Uint8Array(array, byteOffset);
-    else buf = new Uint8Array(array, byteOffset, length);
-    // Return an augmented `Uint8Array` instance
-    Object.setPrototypeOf(buf, Buffer.prototype);
-    return buf;
-}
-function fromObject(obj) {
+function fromObject(that, obj) {
     if (Buffer.isBuffer(obj)) {
         var len = checked(obj.length) | 0;
-        var buf = createBuffer(len);
-        if (buf.length === 0) return buf;
-        obj.copy(buf, 0, 0, len);
-        return buf;
+        that = createBuffer(that, len);
+        if (that.length === 0) return that;
+        obj.copy(that, 0, 0, len);
+        return that;
     }
-    if (obj.length !== undefined) {
-        if (typeof obj.length !== 'number' || numberIsNaN(obj.length)) return createBuffer(0);
-        return fromArrayLike(obj);
+    if (obj) {
+        if (typeof ArrayBuffer !== 'undefined' && obj.buffer instanceof ArrayBuffer || 'length' in obj) {
+            if (typeof obj.length !== 'number' || isnan(obj.length)) return createBuffer(that, 0);
+            return fromArrayLike(that, obj);
+        }
+        if (obj.type === 'Buffer' && isArray(obj.data)) return fromArrayLike(that, obj.data);
     }
-    if (obj.type === 'Buffer' && Array.isArray(obj.data)) return fromArrayLike(obj.data);
+    throw new TypeError('First argument must be a string, Buffer, ArrayBuffer, Array, or array-like object.');
 }
 function checked(length) {
-    // Note: cannot use `length < K_MAX_LENGTH` here because that fails when
+    // Note: cannot use `length < kMaxLength()` here because that fails when
     // length is NaN (which is otherwise coerced to zero.)
-    if (length >= K_MAX_LENGTH) throw new RangeError("Attempt to allocate Buffer larger than maximum size: 0x" + K_MAX_LENGTH.toString(16) + ' bytes');
+    if (length >= kMaxLength()) throw new RangeError("Attempt to allocate Buffer larger than maximum size: 0x" + kMaxLength().toString(16) + ' bytes');
     return length | 0;
 }
 function SlowBuffer(length) {
@@ -24287,13 +24295,10 @@ function SlowBuffer(length) {
     return Buffer.alloc(+length);
 }
 Buffer.isBuffer = function isBuffer(b) {
-    return b != null && b._isBuffer === true && b !== Buffer.prototype // so Buffer.isBuffer(Buffer.prototype) will be false
-    ;
+    return !!(b != null && b._isBuffer);
 };
 Buffer.compare = function compare(a, b) {
-    if (isInstance(a, Uint8Array)) a = Buffer.from(a, a.offset, a.byteLength);
-    if (isInstance(b, Uint8Array)) b = Buffer.from(b, b.offset, b.byteLength);
-    if (!Buffer.isBuffer(a) || !Buffer.isBuffer(b)) throw new TypeError('The "buf1", "buf2" arguments must be one of type Buffer or Uint8Array');
+    if (!Buffer.isBuffer(a) || !Buffer.isBuffer(b)) throw new TypeError('Arguments must be Buffers');
     if (a === b) return 0;
     var x = a.length;
     var y = b.length;
@@ -24325,7 +24330,7 @@ Buffer.isEncoding = function isEncoding(encoding) {
     }
 };
 Buffer.concat = function concat(list, length) {
-    if (!Array.isArray(list)) throw new TypeError('"list" argument must be an Array of Buffers');
+    if (!isArray(list)) throw new TypeError('"list" argument must be an Array of Buffers');
     if (list.length === 0) return Buffer.alloc(0);
     var i;
     if (length === undefined) {
@@ -24336,22 +24341,18 @@ Buffer.concat = function concat(list, length) {
     var pos = 0;
     for(i = 0; i < list.length; ++i){
         var buf = list[i];
-        if (isInstance(buf, Uint8Array)) {
-            if (pos + buf.length > buffer.length) Buffer.from(buf).copy(buffer, pos);
-            else Uint8Array.prototype.set.call(buffer, buf, pos);
-        } else if (!Buffer.isBuffer(buf)) throw new TypeError('"list" argument must be an Array of Buffers');
-        else buf.copy(buffer, pos);
+        if (!Buffer.isBuffer(buf)) throw new TypeError('"list" argument must be an Array of Buffers');
+        buf.copy(buffer, pos);
         pos += buf.length;
     }
     return buffer;
 };
 function byteLength(string, encoding) {
     if (Buffer.isBuffer(string)) return string.length;
-    if (ArrayBuffer.isView(string) || isInstance(string, ArrayBuffer)) return string.byteLength;
-    if (typeof string !== 'string') throw new TypeError('The "string" argument must be one of type string, Buffer, or ArrayBuffer. Received type ' + typeof string);
+    if (typeof ArrayBuffer !== 'undefined' && typeof ArrayBuffer.isView === 'function' && (ArrayBuffer.isView(string) || string instanceof ArrayBuffer)) return string.byteLength;
+    if (typeof string !== 'string') string = '' + string;
     var len = string.length;
-    var mustMatch = arguments.length > 2 && arguments[2] === true;
-    if (!mustMatch && len === 0) return 0;
+    if (len === 0) return 0;
     // Use a for loop to avoid recursion
     var loweredCase = false;
     for(;;)switch(encoding){
@@ -24361,6 +24362,7 @@ function byteLength(string, encoding) {
             return len;
         case 'utf8':
         case 'utf-8':
+        case undefined:
             return utf8ToBytes(string).length;
         case 'ucs2':
         case 'ucs-2':
@@ -24372,7 +24374,7 @@ function byteLength(string, encoding) {
         case 'base64':
             return base64ToBytes(string).length;
         default:
-            if (loweredCase) return mustMatch ? -1 : utf8ToBytes(string).length // assume utf8
+            if (loweredCase) return utf8ToBytes(string).length // assume utf8
             ;
             encoding = ('' + encoding).toLowerCase();
             loweredCase = true;
@@ -24393,7 +24395,7 @@ function slowToString(encoding, start, end) {
     if (start > this.length) return '';
     if (end === undefined || end > this.length) end = this.length;
     if (end <= 0) return '';
-    // Force coercion to uint32. This will also coerce falsey/NaN values to 0.
+    // Force coersion to uint32. This will also coerce falsey/NaN values to 0.
     end >>>= 0;
     start >>>= 0;
     if (end <= start) return '';
@@ -24422,12 +24424,8 @@ function slowToString(encoding, start, end) {
             loweredCase = true;
     }
 }
-// This property is used by `Buffer.isBuffer` (and the `is-buffer` npm package)
-// to detect a Buffer instance. It's not possible to use `instanceof Buffer`
-// reliably in a browserify context because there could be multiple different
-// copies of the 'buffer' package in use. This method works even for Buffer
-// instances that were created from another copy of the `buffer` package.
-// See: https://github.com/feross/buffer/issues/154
+// The property is used by `Buffer.isBuffer` and `is-buffer` (in Safari 5-7) to detect
+// Buffer instances.
 Buffer.prototype._isBuffer = true;
 function swap(b, n, m) {
     var i = b[n];
@@ -24461,12 +24459,11 @@ Buffer.prototype.swap64 = function swap64() {
     return this;
 };
 Buffer.prototype.toString = function toString() {
-    var length = this.length;
+    var length = this.length | 0;
     if (length === 0) return '';
     if (arguments.length === 0) return utf8Slice(this, 0, length);
     return slowToString.apply(this, arguments);
 };
-Buffer.prototype.toLocaleString = Buffer.prototype.toString;
 Buffer.prototype.equals = function equals(b) {
     if (!Buffer.isBuffer(b)) throw new TypeError('Argument must be a Buffer');
     if (this === b) return true;
@@ -24475,14 +24472,14 @@ Buffer.prototype.equals = function equals(b) {
 Buffer.prototype.inspect = function inspect() {
     var str = '';
     var max = exports.INSPECT_MAX_BYTES;
-    str = this.toString('hex', 0, max).replace(/(.{2})/g, '$1 ').trim();
-    if (this.length > max) str += ' ... ';
+    if (this.length > 0) {
+        str = this.toString('hex', 0, max).match(/.{2}/g).join(' ');
+        if (this.length > max) str += ' ... ';
+    }
     return '<Buffer ' + str + '>';
 };
-if (customInspectSymbol) Buffer.prototype[customInspectSymbol] = Buffer.prototype.inspect;
 Buffer.prototype.compare = function compare(target, start, end, thisStart, thisEnd) {
-    if (isInstance(target, Uint8Array)) target = Buffer.from(target, target.offset, target.byteLength);
-    if (!Buffer.isBuffer(target)) throw new TypeError('The "target" argument must be one of type Buffer or Uint8Array. Received type ' + typeof target);
+    if (!Buffer.isBuffer(target)) throw new TypeError('Argument must be a Buffer');
     if (start === undefined) start = 0;
     if (end === undefined) end = target ? target.length : 0;
     if (thisStart === undefined) thisStart = 0;
@@ -24530,7 +24527,7 @@ function bidirectionalIndexOf(buffer, val, byteOffset, encoding, dir) {
     else if (byteOffset < -2147483648) byteOffset = -2147483648;
     byteOffset = +byteOffset // Coerce to Number.
     ;
-    if (numberIsNaN(byteOffset)) // byteOffset: it it's undefined, null, NaN, "foo", etc, search whole buffer
+    if (isNaN(byteOffset)) // byteOffset: it it's undefined, null, NaN, "foo", etc, search whole buffer
     byteOffset = dir ? 0 : buffer.length - 1;
     // Normalize byteOffset: negative offsets start from the end of the buffer
     if (byteOffset < 0) byteOffset = buffer.length + byteOffset;
@@ -24551,7 +24548,7 @@ function bidirectionalIndexOf(buffer, val, byteOffset, encoding, dir) {
     } else if (typeof val === 'number') {
         val = val & 0xFF // Search for a byte value [0-255]
         ;
-        if (typeof Uint8Array.prototype.indexOf === 'function') {
+        if (Buffer.TYPED_ARRAY_SUPPORT && typeof Uint8Array.prototype.indexOf === 'function') {
             if (dir) return Uint8Array.prototype.indexOf.call(buffer, val, byteOffset);
             else return Uint8Array.prototype.lastIndexOf.call(buffer, val, byteOffset);
         }
@@ -24619,11 +24616,13 @@ function hexWrite(buf, string, offset, length) {
         length = Number(length);
         if (length > remaining) length = remaining;
     }
+    // must be an even number of digits
     var strLen = string.length;
+    if (strLen % 2 !== 0) throw new TypeError('Invalid hex string');
     if (length > strLen / 2) length = strLen / 2;
     for(var i = 0; i < length; ++i){
         var parsed = parseInt(string.substr(i * 2, 2), 16);
-        if (numberIsNaN(parsed)) return i;
+        if (isNaN(parsed)) return i;
         buf[offset + i] = parsed;
     }
     return i;
@@ -24633,6 +24632,9 @@ function utf8Write(buf, string, offset, length) {
 }
 function asciiWrite(buf, string, offset, length) {
     return blitBuffer(asciiToBytes(string), buf, offset, length);
+}
+function latin1Write(buf, string, offset, length) {
+    return asciiWrite(buf, string, offset, length);
 }
 function base64Write(buf, string, offset, length) {
     return blitBuffer(base64ToBytes(string), buf, offset, length);
@@ -24653,14 +24655,15 @@ Buffer.prototype.write = function write(string, offset, length, encoding) {
         offset = 0;
     // Buffer#write(string, offset[, length][, encoding])
     } else if (isFinite(offset)) {
-        offset = offset >>> 0;
+        offset = offset | 0;
         if (isFinite(length)) {
-            length = length >>> 0;
+            length = length | 0;
             if (encoding === undefined) encoding = 'utf8';
         } else {
             encoding = length;
             length = undefined;
         }
+    // legacy write(string, encoding, offset, length) - remove in v0.13
     } else throw new Error('Buffer.write(string, encoding, offset[, length]) is no longer supported');
     var remaining = this.length - offset;
     if (length === undefined || length > remaining) length = remaining;
@@ -24674,9 +24677,10 @@ Buffer.prototype.write = function write(string, offset, length, encoding) {
         case 'utf-8':
             return utf8Write(this, string, offset, length);
         case 'ascii':
+            return asciiWrite(this, string, offset, length);
         case 'latin1':
         case 'binary':
-            return asciiWrite(this, string, offset, length);
+            return latin1Write(this, string, offset, length);
         case 'base64':
             // Warning: maxLength not taken into account in base64Write
             return base64Write(this, string, offset, length);
@@ -24787,14 +24791,13 @@ function hexSlice(buf, start, end) {
     if (!start || start < 0) start = 0;
     if (!end || end < 0 || end > len) end = len;
     var out = '';
-    for(var i = start; i < end; ++i)out += hexSliceLookupTable[buf[i]];
+    for(var i = start; i < end; ++i)out += toHex(buf[i]);
     return out;
 }
 function utf16leSlice(buf, start, end) {
     var bytes = buf.slice(start, end);
     var res = '';
-    // If bytes.length is odd, the last 8 bits must be ignored (same as node.js)
-    for(var i = 0; i < bytes.length - 1; i += 2)res += String.fromCharCode(bytes[i] + bytes[i + 1] * 256);
+    for(var i = 0; i < bytes.length; i += 2)res += String.fromCharCode(bytes[i] + bytes[i + 1] * 256);
     return res;
 }
 Buffer.prototype.slice = function slice(start, end) {
@@ -24810,9 +24813,15 @@ Buffer.prototype.slice = function slice(start, end) {
         if (end < 0) end = 0;
     } else if (end > len) end = len;
     if (end < start) end = start;
-    var newBuf = this.subarray(start, end);
-    // Return an augmented `Uint8Array` instance
-    Object.setPrototypeOf(newBuf, Buffer.prototype);
+    var newBuf;
+    if (Buffer.TYPED_ARRAY_SUPPORT) {
+        newBuf = this.subarray(start, end);
+        newBuf.__proto__ = Buffer.prototype;
+    } else {
+        var sliceLen = end - start;
+        newBuf = new Buffer(sliceLen, undefined);
+        for(var i = 0; i < sliceLen; ++i)newBuf[i] = this[i + start];
+    }
     return newBuf;
 };
 /*
@@ -24821,9 +24830,9 @@ Buffer.prototype.slice = function slice(start, end) {
     if (offset % 1 !== 0 || offset < 0) throw new RangeError('offset is not uint');
     if (offset + ext > length) throw new RangeError('Trying to access beyond buffer length');
 }
-Buffer.prototype.readUintLE = Buffer.prototype.readUIntLE = function readUIntLE(offset, byteLength1, noAssert) {
-    offset = offset >>> 0;
-    byteLength1 = byteLength1 >>> 0;
+Buffer.prototype.readUIntLE = function readUIntLE(offset, byteLength1, noAssert) {
+    offset = offset | 0;
+    byteLength1 = byteLength1 | 0;
     if (!noAssert) checkOffset(offset, byteLength1, this.length);
     var val = this[offset];
     var mul = 1;
@@ -24831,43 +24840,38 @@ Buffer.prototype.readUintLE = Buffer.prototype.readUIntLE = function readUIntLE(
     while(++i < byteLength1 && (mul *= 0x100))val += this[offset + i] * mul;
     return val;
 };
-Buffer.prototype.readUintBE = Buffer.prototype.readUIntBE = function readUIntBE(offset, byteLength2, noAssert) {
-    offset = offset >>> 0;
-    byteLength2 = byteLength2 >>> 0;
+Buffer.prototype.readUIntBE = function readUIntBE(offset, byteLength2, noAssert) {
+    offset = offset | 0;
+    byteLength2 = byteLength2 | 0;
     if (!noAssert) checkOffset(offset, byteLength2, this.length);
     var val = this[offset + --byteLength2];
     var mul = 1;
     while(byteLength2 > 0 && (mul *= 0x100))val += this[offset + --byteLength2] * mul;
     return val;
 };
-Buffer.prototype.readUint8 = Buffer.prototype.readUInt8 = function readUInt8(offset, noAssert) {
-    offset = offset >>> 0;
+Buffer.prototype.readUInt8 = function readUInt8(offset, noAssert) {
     if (!noAssert) checkOffset(offset, 1, this.length);
     return this[offset];
 };
-Buffer.prototype.readUint16LE = Buffer.prototype.readUInt16LE = function readUInt16LE(offset, noAssert) {
-    offset = offset >>> 0;
+Buffer.prototype.readUInt16LE = function readUInt16LE(offset, noAssert) {
     if (!noAssert) checkOffset(offset, 2, this.length);
     return this[offset] | this[offset + 1] << 8;
 };
-Buffer.prototype.readUint16BE = Buffer.prototype.readUInt16BE = function readUInt16BE(offset, noAssert) {
-    offset = offset >>> 0;
+Buffer.prototype.readUInt16BE = function readUInt16BE(offset, noAssert) {
     if (!noAssert) checkOffset(offset, 2, this.length);
     return this[offset] << 8 | this[offset + 1];
 };
-Buffer.prototype.readUint32LE = Buffer.prototype.readUInt32LE = function readUInt32LE(offset, noAssert) {
-    offset = offset >>> 0;
+Buffer.prototype.readUInt32LE = function readUInt32LE(offset, noAssert) {
     if (!noAssert) checkOffset(offset, 4, this.length);
     return (this[offset] | this[offset + 1] << 8 | this[offset + 2] << 16) + this[offset + 3] * 0x1000000;
 };
-Buffer.prototype.readUint32BE = Buffer.prototype.readUInt32BE = function readUInt32BE(offset, noAssert) {
-    offset = offset >>> 0;
+Buffer.prototype.readUInt32BE = function readUInt32BE(offset, noAssert) {
     if (!noAssert) checkOffset(offset, 4, this.length);
     return this[offset] * 0x1000000 + (this[offset + 1] << 16 | this[offset + 2] << 8 | this[offset + 3]);
 };
 Buffer.prototype.readIntLE = function readIntLE(offset, byteLength3, noAssert) {
-    offset = offset >>> 0;
-    byteLength3 = byteLength3 >>> 0;
+    offset = offset | 0;
+    byteLength3 = byteLength3 | 0;
     if (!noAssert) checkOffset(offset, byteLength3, this.length);
     var val = this[offset];
     var mul = 1;
@@ -24878,8 +24882,8 @@ Buffer.prototype.readIntLE = function readIntLE(offset, byteLength3, noAssert) {
     return val;
 };
 Buffer.prototype.readIntBE = function readIntBE(offset, byteLength4, noAssert) {
-    offset = offset >>> 0;
-    byteLength4 = byteLength4 >>> 0;
+    offset = offset | 0;
+    byteLength4 = byteLength4 | 0;
     if (!noAssert) checkOffset(offset, byteLength4, this.length);
     var i = byteLength4;
     var mul = 1;
@@ -24890,50 +24894,41 @@ Buffer.prototype.readIntBE = function readIntBE(offset, byteLength4, noAssert) {
     return val;
 };
 Buffer.prototype.readInt8 = function readInt8(offset, noAssert) {
-    offset = offset >>> 0;
     if (!noAssert) checkOffset(offset, 1, this.length);
     if (!(this[offset] & 0x80)) return this[offset];
     return (0xff - this[offset] + 1) * -1;
 };
 Buffer.prototype.readInt16LE = function readInt16LE(offset, noAssert) {
-    offset = offset >>> 0;
     if (!noAssert) checkOffset(offset, 2, this.length);
     var val = this[offset] | this[offset + 1] << 8;
     return val & 0x8000 ? val | 0xFFFF0000 : val;
 };
 Buffer.prototype.readInt16BE = function readInt16BE(offset, noAssert) {
-    offset = offset >>> 0;
     if (!noAssert) checkOffset(offset, 2, this.length);
     var val = this[offset + 1] | this[offset] << 8;
     return val & 0x8000 ? val | 0xFFFF0000 : val;
 };
 Buffer.prototype.readInt32LE = function readInt32LE(offset, noAssert) {
-    offset = offset >>> 0;
     if (!noAssert) checkOffset(offset, 4, this.length);
     return this[offset] | this[offset + 1] << 8 | this[offset + 2] << 16 | this[offset + 3] << 24;
 };
 Buffer.prototype.readInt32BE = function readInt32BE(offset, noAssert) {
-    offset = offset >>> 0;
     if (!noAssert) checkOffset(offset, 4, this.length);
     return this[offset] << 24 | this[offset + 1] << 16 | this[offset + 2] << 8 | this[offset + 3];
 };
 Buffer.prototype.readFloatLE = function readFloatLE(offset, noAssert) {
-    offset = offset >>> 0;
     if (!noAssert) checkOffset(offset, 4, this.length);
     return ieee754.read(this, offset, true, 23, 4);
 };
 Buffer.prototype.readFloatBE = function readFloatBE(offset, noAssert) {
-    offset = offset >>> 0;
     if (!noAssert) checkOffset(offset, 4, this.length);
     return ieee754.read(this, offset, false, 23, 4);
 };
 Buffer.prototype.readDoubleLE = function readDoubleLE(offset, noAssert) {
-    offset = offset >>> 0;
     if (!noAssert) checkOffset(offset, 8, this.length);
     return ieee754.read(this, offset, true, 52, 8);
 };
 Buffer.prototype.readDoubleBE = function readDoubleBE(offset, noAssert) {
-    offset = offset >>> 0;
     if (!noAssert) checkOffset(offset, 8, this.length);
     return ieee754.read(this, offset, false, 52, 8);
 };
@@ -24942,10 +24937,10 @@ function checkInt(buf, value, offset, ext, max, min) {
     if (value > max || value < min) throw new RangeError('"value" argument is out of bounds');
     if (offset + ext > buf.length) throw new RangeError('Index out of range');
 }
-Buffer.prototype.writeUintLE = Buffer.prototype.writeUIntLE = function writeUIntLE(value, offset, byteLength5, noAssert) {
+Buffer.prototype.writeUIntLE = function writeUIntLE(value, offset, byteLength5, noAssert) {
     value = +value;
-    offset = offset >>> 0;
-    byteLength5 = byteLength5 >>> 0;
+    offset = offset | 0;
+    byteLength5 = byteLength5 | 0;
     if (!noAssert) {
         var maxBytes = Math.pow(2, 8 * byteLength5) - 1;
         checkInt(this, value, offset, byteLength5, maxBytes, 0);
@@ -24956,10 +24951,10 @@ Buffer.prototype.writeUintLE = Buffer.prototype.writeUIntLE = function writeUInt
     while(++i < byteLength5 && (mul *= 0x100))this[offset + i] = value / mul & 0xFF;
     return offset + byteLength5;
 };
-Buffer.prototype.writeUintBE = Buffer.prototype.writeUIntBE = function writeUIntBE(value, offset, byteLength6, noAssert) {
+Buffer.prototype.writeUIntBE = function writeUIntBE(value, offset, byteLength6, noAssert) {
     value = +value;
-    offset = offset >>> 0;
-    byteLength6 = byteLength6 >>> 0;
+    offset = offset | 0;
+    byteLength6 = byteLength6 | 0;
     if (!noAssert) {
         var maxBytes = Math.pow(2, 8 * byteLength6) - 1;
         checkInt(this, value, offset, byteLength6, maxBytes, 0);
@@ -24970,52 +24965,69 @@ Buffer.prototype.writeUintBE = Buffer.prototype.writeUIntBE = function writeUInt
     while(--i >= 0 && (mul *= 0x100))this[offset + i] = value / mul & 0xFF;
     return offset + byteLength6;
 };
-Buffer.prototype.writeUint8 = Buffer.prototype.writeUInt8 = function writeUInt8(value, offset, noAssert) {
+Buffer.prototype.writeUInt8 = function writeUInt8(value, offset, noAssert) {
     value = +value;
-    offset = offset >>> 0;
+    offset = offset | 0;
     if (!noAssert) checkInt(this, value, offset, 1, 0xff, 0);
+    if (!Buffer.TYPED_ARRAY_SUPPORT) value = Math.floor(value);
     this[offset] = value & 0xff;
     return offset + 1;
 };
-Buffer.prototype.writeUint16LE = Buffer.prototype.writeUInt16LE = function writeUInt16LE(value, offset, noAssert) {
+function objectWriteUInt16(buf, value, offset, littleEndian) {
+    if (value < 0) value = 0xffff + value + 1;
+    for(var i = 0, j = Math.min(buf.length - offset, 2); i < j; ++i)buf[offset + i] = (value & 0xff << 8 * (littleEndian ? i : 1 - i)) >>> (littleEndian ? i : 1 - i) * 8;
+}
+Buffer.prototype.writeUInt16LE = function writeUInt16LE(value, offset, noAssert) {
     value = +value;
-    offset = offset >>> 0;
+    offset = offset | 0;
     if (!noAssert) checkInt(this, value, offset, 2, 0xffff, 0);
-    this[offset] = value & 0xff;
-    this[offset + 1] = value >>> 8;
+    if (Buffer.TYPED_ARRAY_SUPPORT) {
+        this[offset] = value & 0xff;
+        this[offset + 1] = value >>> 8;
+    } else objectWriteUInt16(this, value, offset, true);
     return offset + 2;
 };
-Buffer.prototype.writeUint16BE = Buffer.prototype.writeUInt16BE = function writeUInt16BE(value, offset, noAssert) {
+Buffer.prototype.writeUInt16BE = function writeUInt16BE(value, offset, noAssert) {
     value = +value;
-    offset = offset >>> 0;
+    offset = offset | 0;
     if (!noAssert) checkInt(this, value, offset, 2, 0xffff, 0);
-    this[offset] = value >>> 8;
-    this[offset + 1] = value & 0xff;
+    if (Buffer.TYPED_ARRAY_SUPPORT) {
+        this[offset] = value >>> 8;
+        this[offset + 1] = value & 0xff;
+    } else objectWriteUInt16(this, value, offset, false);
     return offset + 2;
 };
-Buffer.prototype.writeUint32LE = Buffer.prototype.writeUInt32LE = function writeUInt32LE(value, offset, noAssert) {
+function objectWriteUInt32(buf, value, offset, littleEndian) {
+    if (value < 0) value = 0xffffffff + value + 1;
+    for(var i = 0, j = Math.min(buf.length - offset, 4); i < j; ++i)buf[offset + i] = value >>> (littleEndian ? i : 3 - i) * 8 & 0xff;
+}
+Buffer.prototype.writeUInt32LE = function writeUInt32LE(value, offset, noAssert) {
     value = +value;
-    offset = offset >>> 0;
+    offset = offset | 0;
     if (!noAssert) checkInt(this, value, offset, 4, 0xffffffff, 0);
-    this[offset + 3] = value >>> 24;
-    this[offset + 2] = value >>> 16;
-    this[offset + 1] = value >>> 8;
-    this[offset] = value & 0xff;
+    if (Buffer.TYPED_ARRAY_SUPPORT) {
+        this[offset + 3] = value >>> 24;
+        this[offset + 2] = value >>> 16;
+        this[offset + 1] = value >>> 8;
+        this[offset] = value & 0xff;
+    } else objectWriteUInt32(this, value, offset, true);
     return offset + 4;
 };
-Buffer.prototype.writeUint32BE = Buffer.prototype.writeUInt32BE = function writeUInt32BE(value, offset, noAssert) {
+Buffer.prototype.writeUInt32BE = function writeUInt32BE(value, offset, noAssert) {
     value = +value;
-    offset = offset >>> 0;
+    offset = offset | 0;
     if (!noAssert) checkInt(this, value, offset, 4, 0xffffffff, 0);
-    this[offset] = value >>> 24;
-    this[offset + 1] = value >>> 16;
-    this[offset + 2] = value >>> 8;
-    this[offset + 3] = value & 0xff;
+    if (Buffer.TYPED_ARRAY_SUPPORT) {
+        this[offset] = value >>> 24;
+        this[offset + 1] = value >>> 16;
+        this[offset + 2] = value >>> 8;
+        this[offset + 3] = value & 0xff;
+    } else objectWriteUInt32(this, value, offset, false);
     return offset + 4;
 };
 Buffer.prototype.writeIntLE = function writeIntLE(value, offset, byteLength7, noAssert) {
     value = +value;
-    offset = offset >>> 0;
+    offset = offset | 0;
     if (!noAssert) {
         var limit = Math.pow(2, 8 * byteLength7 - 1);
         checkInt(this, value, offset, byteLength7, limit - 1, -limit);
@@ -25032,7 +25044,7 @@ Buffer.prototype.writeIntLE = function writeIntLE(value, offset, byteLength7, no
 };
 Buffer.prototype.writeIntBE = function writeIntBE(value, offset, byteLength8, noAssert) {
     value = +value;
-    offset = offset >>> 0;
+    offset = offset | 0;
     if (!noAssert) {
         var limit = Math.pow(2, 8 * byteLength8 - 1);
         checkInt(this, value, offset, byteLength8, limit - 1, -limit);
@@ -25049,47 +25061,56 @@ Buffer.prototype.writeIntBE = function writeIntBE(value, offset, byteLength8, no
 };
 Buffer.prototype.writeInt8 = function writeInt8(value, offset, noAssert) {
     value = +value;
-    offset = offset >>> 0;
+    offset = offset | 0;
     if (!noAssert) checkInt(this, value, offset, 1, 0x7f, -128);
+    if (!Buffer.TYPED_ARRAY_SUPPORT) value = Math.floor(value);
     if (value < 0) value = 0xff + value + 1;
     this[offset] = value & 0xff;
     return offset + 1;
 };
 Buffer.prototype.writeInt16LE = function writeInt16LE(value, offset, noAssert) {
     value = +value;
-    offset = offset >>> 0;
+    offset = offset | 0;
     if (!noAssert) checkInt(this, value, offset, 2, 0x7fff, -32768);
-    this[offset] = value & 0xff;
-    this[offset + 1] = value >>> 8;
+    if (Buffer.TYPED_ARRAY_SUPPORT) {
+        this[offset] = value & 0xff;
+        this[offset + 1] = value >>> 8;
+    } else objectWriteUInt16(this, value, offset, true);
     return offset + 2;
 };
 Buffer.prototype.writeInt16BE = function writeInt16BE(value, offset, noAssert) {
     value = +value;
-    offset = offset >>> 0;
+    offset = offset | 0;
     if (!noAssert) checkInt(this, value, offset, 2, 0x7fff, -32768);
-    this[offset] = value >>> 8;
-    this[offset + 1] = value & 0xff;
+    if (Buffer.TYPED_ARRAY_SUPPORT) {
+        this[offset] = value >>> 8;
+        this[offset + 1] = value & 0xff;
+    } else objectWriteUInt16(this, value, offset, false);
     return offset + 2;
 };
 Buffer.prototype.writeInt32LE = function writeInt32LE(value, offset, noAssert) {
     value = +value;
-    offset = offset >>> 0;
+    offset = offset | 0;
     if (!noAssert) checkInt(this, value, offset, 4, 0x7fffffff, -2147483648);
-    this[offset] = value & 0xff;
-    this[offset + 1] = value >>> 8;
-    this[offset + 2] = value >>> 16;
-    this[offset + 3] = value >>> 24;
+    if (Buffer.TYPED_ARRAY_SUPPORT) {
+        this[offset] = value & 0xff;
+        this[offset + 1] = value >>> 8;
+        this[offset + 2] = value >>> 16;
+        this[offset + 3] = value >>> 24;
+    } else objectWriteUInt32(this, value, offset, true);
     return offset + 4;
 };
 Buffer.prototype.writeInt32BE = function writeInt32BE(value, offset, noAssert) {
     value = +value;
-    offset = offset >>> 0;
+    offset = offset | 0;
     if (!noAssert) checkInt(this, value, offset, 4, 0x7fffffff, -2147483648);
     if (value < 0) value = 0xffffffff + value + 1;
-    this[offset] = value >>> 24;
-    this[offset + 1] = value >>> 16;
-    this[offset + 2] = value >>> 8;
-    this[offset + 3] = value & 0xff;
+    if (Buffer.TYPED_ARRAY_SUPPORT) {
+        this[offset] = value >>> 24;
+        this[offset + 1] = value >>> 16;
+        this[offset + 2] = value >>> 8;
+        this[offset + 3] = value & 0xff;
+    } else objectWriteUInt32(this, value, offset, false);
     return offset + 4;
 };
 function checkIEEE754(buf, value, offset, ext, max, min) {
@@ -25097,8 +25118,6 @@ function checkIEEE754(buf, value, offset, ext, max, min) {
     if (offset < 0) throw new RangeError('Index out of range');
 }
 function writeFloat(buf, value, offset, littleEndian, noAssert) {
-    value = +value;
-    offset = offset >>> 0;
     if (!noAssert) checkIEEE754(buf, value, offset, 4, 3.4028234663852886e+38, -340282346638528860000000000000000000000);
     ieee754.write(buf, value, offset, littleEndian, 23, 4);
     return offset + 4;
@@ -25110,8 +25129,6 @@ Buffer.prototype.writeFloatBE = function writeFloatBE(value, offset, noAssert) {
     return writeFloat(this, value, offset, false, noAssert);
 };
 function writeDouble(buf, value, offset, littleEndian, noAssert) {
-    value = +value;
-    offset = offset >>> 0;
     if (!noAssert) checkIEEE754(buf, value, offset, 8, 1.7976931348623157E+308, -179769313486231570000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000);
     ieee754.write(buf, value, offset, littleEndian, 52, 8);
     return offset + 8;
@@ -25124,7 +25141,6 @@ Buffer.prototype.writeDoubleBE = function writeDoubleBE(value, offset, noAssert)
 };
 // copy(targetBuffer, targetStart=0, sourceStart=0, sourceEnd=buffer.length)
 Buffer.prototype.copy = function copy(target, targetStart, start, end) {
-    if (!Buffer.isBuffer(target)) throw new TypeError('argument should be a Buffer');
     if (!start) start = 0;
     if (!end && end !== 0) end = this.length;
     if (targetStart >= target.length) targetStart = target.length;
@@ -25135,15 +25151,18 @@ Buffer.prototype.copy = function copy(target, targetStart, start, end) {
     if (target.length === 0 || this.length === 0) return 0;
     // Fatal error conditions
     if (targetStart < 0) throw new RangeError('targetStart out of bounds');
-    if (start < 0 || start >= this.length) throw new RangeError('Index out of range');
+    if (start < 0 || start >= this.length) throw new RangeError('sourceStart out of bounds');
     if (end < 0) throw new RangeError('sourceEnd out of bounds');
     // Are we oob?
     if (end > this.length) end = this.length;
     if (target.length - targetStart < end - start) end = target.length - targetStart + start;
     var len = end - start;
-    if (this === target && typeof Uint8Array.prototype.copyWithin === 'function') // Use built-in when available, missing from IE11
-    this.copyWithin(targetStart, start, end);
-    else Uint8Array.prototype.set.call(target, this.subarray(start, end), targetStart);
+    var i;
+    if (this === target && start < targetStart && targetStart < end) // descending copy from end
+    for(i = len - 1; i >= 0; --i)target[i + targetStart] = this[i + start];
+    else if (len < 1000 || !Buffer.TYPED_ARRAY_SUPPORT) // ascending copy from start
+    for(i = 0; i < len; ++i)target[i + targetStart] = this[i + start];
+    else Uint8Array.prototype.set.call(target, this.subarray(start, start + len), targetStart);
     return len;
 };
 // Usage:
@@ -25161,15 +25180,13 @@ Buffer.prototype.fill = function fill(val, start, end, encoding) {
             encoding = end;
             end = this.length;
         }
-        if (encoding !== undefined && typeof encoding !== 'string') throw new TypeError('encoding must be a string');
-        if (typeof encoding === 'string' && !Buffer.isEncoding(encoding)) throw new TypeError('Unknown encoding: ' + encoding);
         if (val.length === 1) {
             var code = val.charCodeAt(0);
-            if (encoding === 'utf8' && code < 128 || encoding === 'latin1') // Fast path: If `val` fits into a single byte, use that numeric value.
-            val = code;
+            if (code < 256) val = code;
         }
+        if (encoding !== undefined && typeof encoding !== 'string') throw new TypeError('encoding must be a string');
+        if (typeof encoding === 'string' && !Buffer.isEncoding(encoding)) throw new TypeError('Unknown encoding: ' + encoding);
     } else if (typeof val === 'number') val = val & 255;
-    else if (typeof val === 'boolean') val = Number(val);
     // Invalid ranges are not set to a default, so can range check early.
     if (start < 0 || this.length < start || this.length < end) throw new RangeError('Out of range index');
     if (end <= start) return this;
@@ -25179,26 +25196,31 @@ Buffer.prototype.fill = function fill(val, start, end, encoding) {
     var i;
     if (typeof val === 'number') for(i = start; i < end; ++i)this[i] = val;
     else {
-        var bytes = Buffer.isBuffer(val) ? val : Buffer.from(val, encoding);
+        var bytes = Buffer.isBuffer(val) ? val : utf8ToBytes(new Buffer(val, encoding).toString());
         var len = bytes.length;
-        if (len === 0) throw new TypeError('The value "' + val + '" is invalid for argument "value"');
         for(i = 0; i < end - start; ++i)this[i + start] = bytes[i % len];
     }
     return this;
 };
 // HELPER FUNCTIONS
 // ================
-var INVALID_BASE64_RE = /[^+/0-9A-Za-z-_]/g;
+var INVALID_BASE64_RE = /[^+\/0-9A-Za-z-_]/g;
 function base64clean(str) {
-    // Node takes equal signs as end of the Base64 encoding
-    str = str.split('=')[0];
     // Node strips out invalid characters like \n and \t from the string, base64-js does not
-    str = str.trim().replace(INVALID_BASE64_RE, '');
+    str = stringtrim(str).replace(INVALID_BASE64_RE, '');
     // Node converts strings with length < 2 to ''
     if (str.length < 2) return '';
     // Node allows for non-padded base64 strings (missing trailing ===), base64-js does not
     while(str.length % 4 !== 0)str = str + '=';
     return str;
+}
+function stringtrim(str) {
+    if (str.trim) return str.trim();
+    return str.replace(/^\s+|\s+$/g, '');
+}
+function toHex(n) {
+    if (n < 16) return '0' + n.toString(16);
+    return n.toString(16);
 }
 function utf8ToBytes(string, units) {
     units = units || Infinity;
@@ -25285,30 +25307,12 @@ function blitBuffer(src, dst, offset, length) {
     }
     return i;
 }
-// ArrayBuffer or Uint8Array objects from other contexts (i.e. iframes) do not pass
-// the `instanceof` check but they should be treated as of that type.
-// See: https://github.com/feross/buffer/issues/166
-function isInstance(obj, type) {
-    return obj instanceof type || obj != null && obj.constructor != null && obj.constructor.name != null && obj.constructor.name === type.name;
-}
-function numberIsNaN(obj) {
-    // For IE11 support
-    return obj !== obj // eslint-disable-line no-self-compare
+function isnan(val) {
+    return val !== val // eslint-disable-line no-self-compare
     ;
 }
-// Create lookup table for `toString('hex')`
-// See: https://github.com/feross/buffer/issues/219
-var hexSliceLookupTable = function() {
-    var alphabet = '0123456789abcdef';
-    var table = new Array(256);
-    for(var i = 0; i < 16; ++i){
-        var i16 = i * 16;
-        for(var j = 0; j < 16; ++j)table[i16 + j] = alphabet[i] + alphabet[j];
-    }
-    return table;
-}();
 
-},{"base64-js":"j0lMD","ieee754":"dYVku"}],"j0lMD":[function(require,module,exports) {
+},{"base64-js":"eIiSV","ieee754":"cO95r","isarray":"iMDsW"}],"eIiSV":[function(require,module,exports) {
 'use strict';
 exports.byteLength = byteLength;
 exports.toByteArray = toByteArray;
@@ -25408,7 +25412,7 @@ function fromByteArray(uint8) {
     return parts.join('');
 }
 
-},{}],"dYVku":[function(require,module,exports) {
+},{}],"cO95r":[function(require,module,exports) {
 /*! ieee754. BSD-3-Clause License. Feross Aboukhadijeh <https://feross.org/opensource> */ exports.read = function(buffer, offset, isLE, mLen, nBytes) {
     var e, m;
     var eLen = nBytes * 8 - mLen - 1;
@@ -25476,6 +25480,12 @@ exports.write = function(buffer, value, offset, isLE, mLen, nBytes) {
     eLen += mLen;
     for(; eLen > 0; buffer[offset + i] = e & 0xff, i += d, e /= 256, eLen -= 8);
     buffer[offset + i - d] |= s * 128;
+};
+
+},{}],"iMDsW":[function(require,module,exports) {
+var toString = {}.toString;
+module.exports = Array.isArray || function(arr) {
+    return toString.call(arr) == '[object Array]';
 };
 
 },{}],"ldm57":[function(require,module,exports) {
@@ -36205,6 +36215,8 @@ var _reactDefault = parcelHelpers.interopDefault(_react);
 var _profileViewScss = require("./profile-view.scss");
 var _propTypes = require("prop-types");
 var _propTypesDefault = parcelHelpers.interopDefault(_propTypes);
+var _reactRedux = require("react-redux");
+var _actions = require("../../actions/actions");
 var _reactBootstrap = require("react-bootstrap");
 var _axios = require("axios");
 var _axiosDefault = parcelHelpers.interopDefault(_axios);
@@ -36338,12 +36350,12 @@ class ProfileView extends _reactDefault.default.Component {
                         children: "Welcome to your MyFlix Profile"
                     }, void 0, false, {
                         fileName: "src/components/profile-view/profile-view.jsx",
-                        lineNumber: 160,
+                        lineNumber: 162,
                         columnNumber: 21
                     }, this)
                 }, void 0, false, {
                     fileName: "src/components/profile-view/profile-view.jsx",
-                    lineNumber: 157,
+                    lineNumber: 159,
                     columnNumber: 5
                 }, this),
                 /*#__PURE__*/ _jsxDevRuntime.jsxDEV(_reactBootstrap.Row, {
@@ -36366,7 +36378,7 @@ class ProfileView extends _reactDefault.default.Component {
                                                     children: "Username"
                                                 }, void 0, false, {
                                                     fileName: "src/components/profile-view/profile-view.jsx",
-                                                    lineNumber: 180,
+                                                    lineNumber: 182,
                                                     columnNumber: 25
                                                 }, this),
                                                 /*#__PURE__*/ _jsxDevRuntime.jsxDEV(_reactBootstrap.FormControl, {
@@ -36379,13 +36391,13 @@ class ProfileView extends _reactDefault.default.Component {
                                                     required: true
                                                 }, void 0, false, {
                                                     fileName: "src/components/profile-view/profile-view.jsx",
-                                                    lineNumber: 181,
+                                                    lineNumber: 183,
                                                     columnNumber: 25
                                                 }, this)
                                             ]
                                         }, void 0, true, {
                                             fileName: "src/components/profile-view/profile-view.jsx",
-                                            lineNumber: 179,
+                                            lineNumber: 181,
                                             columnNumber: 21
                                         }, this),
                                         /*#__PURE__*/ _jsxDevRuntime.jsxDEV(_reactBootstrap.FormGroup, {
@@ -36394,7 +36406,7 @@ class ProfileView extends _reactDefault.default.Component {
                                                     children: "Password"
                                                 }, void 0, false, {
                                                     fileName: "src/components/profile-view/profile-view.jsx",
-                                                    lineNumber: 191,
+                                                    lineNumber: 193,
                                                     columnNumber: 25
                                                 }, this),
                                                 /*#__PURE__*/ _jsxDevRuntime.jsxDEV(_reactBootstrap.FormControl, {
@@ -36407,13 +36419,13 @@ class ProfileView extends _reactDefault.default.Component {
                                                     required: true
                                                 }, void 0, false, {
                                                     fileName: "src/components/profile-view/profile-view.jsx",
-                                                    lineNumber: 192,
+                                                    lineNumber: 194,
                                                     columnNumber: 25
                                                 }, this)
                                             ]
                                         }, void 0, true, {
                                             fileName: "src/components/profile-view/profile-view.jsx",
-                                            lineNumber: 190,
+                                            lineNumber: 192,
                                             columnNumber: 21
                                         }, this),
                                         /*#__PURE__*/ _jsxDevRuntime.jsxDEV(_reactBootstrap.FormGroup, {
@@ -36422,7 +36434,7 @@ class ProfileView extends _reactDefault.default.Component {
                                                     children: "Email"
                                                 }, void 0, false, {
                                                     fileName: "src/components/profile-view/profile-view.jsx",
-                                                    lineNumber: 202,
+                                                    lineNumber: 204,
                                                     columnNumber: 25
                                                 }, this),
                                                 /*#__PURE__*/ _jsxDevRuntime.jsxDEV(_reactBootstrap.FormControl, {
@@ -36435,13 +36447,13 @@ class ProfileView extends _reactDefault.default.Component {
                                                     required: true
                                                 }, void 0, false, {
                                                     fileName: "src/components/profile-view/profile-view.jsx",
-                                                    lineNumber: 203,
+                                                    lineNumber: 205,
                                                     columnNumber: 25
                                                 }, this)
                                             ]
                                         }, void 0, true, {
                                             fileName: "src/components/profile-view/profile-view.jsx",
-                                            lineNumber: 201,
+                                            lineNumber: 203,
                                             columnNumber: 21
                                         }, this),
                                         /*#__PURE__*/ _jsxDevRuntime.jsxDEV(_reactBootstrap.FormGroup, {
@@ -36450,7 +36462,7 @@ class ProfileView extends _reactDefault.default.Component {
                                                     children: "Birthday"
                                                 }, void 0, false, {
                                                     fileName: "src/components/profile-view/profile-view.jsx",
-                                                    lineNumber: 213,
+                                                    lineNumber: 215,
                                                     columnNumber: 25
                                                 }, this),
                                                 /*#__PURE__*/ _jsxDevRuntime.jsxDEV(_reactBootstrap.FormControl, {
@@ -36462,13 +36474,13 @@ class ProfileView extends _reactDefault.default.Component {
                                                     required: true
                                                 }, void 0, false, {
                                                     fileName: "src/components/profile-view/profile-view.jsx",
-                                                    lineNumber: 214,
+                                                    lineNumber: 216,
                                                     columnNumber: 25
                                                 }, this)
                                             ]
                                         }, void 0, true, {
                                             fileName: "src/components/profile-view/profile-view.jsx",
-                                            lineNumber: 212,
+                                            lineNumber: 214,
                                             columnNumber: 21
                                         }, this),
                                         /*#__PURE__*/ _jsxDevRuntime.jsxDEV("div", {
@@ -36480,46 +36492,46 @@ class ProfileView extends _reactDefault.default.Component {
                                                     children: "Update Data"
                                                 }, void 0, false, {
                                                     fileName: "src/components/profile-view/profile-view.jsx",
-                                                    lineNumber: 223,
+                                                    lineNumber: 225,
                                                     columnNumber: 25
                                                 }, this),
                                                 /*#__PURE__*/ _jsxDevRuntime.jsxDEV("p", {
                                                     children: "*Updates will be displayed after next Login"
                                                 }, void 0, false, {
                                                     fileName: "src/components/profile-view/profile-view.jsx",
-                                                    lineNumber: 224,
+                                                    lineNumber: 226,
                                                     columnNumber: 21
                                                 }, this)
                                             ]
                                         }, void 0, true, {
                                             fileName: "src/components/profile-view/profile-view.jsx",
-                                            lineNumber: 222,
+                                            lineNumber: 224,
                                             columnNumber: 21
                                         }, this)
                                     ]
                                 }, void 0, true, {
                                     fileName: "src/components/profile-view/profile-view.jsx",
-                                    lineNumber: 167,
+                                    lineNumber: 169,
                                     columnNumber: 21
                                 }, this)
                             }, void 0, false, {
                                 fileName: "src/components/profile-view/profile-view.jsx",
-                                lineNumber: 166,
+                                lineNumber: 168,
                                 columnNumber: 21
                             }, this)
                         }, void 0, false, {
                             fileName: "src/components/profile-view/profile-view.jsx",
-                            lineNumber: 165,
+                            lineNumber: 167,
                             columnNumber: 21
                         }, this)
                     }, void 0, false, {
                         fileName: "src/components/profile-view/profile-view.jsx",
-                        lineNumber: 164,
+                        lineNumber: 166,
                         columnNumber: 13
                     }, this)
                 }, void 0, false, {
                     fileName: "src/components/profile-view/profile-view.jsx",
-                    lineNumber: 163,
+                    lineNumber: 165,
                     columnNumber: 13
                 }, this),
                 /*#__PURE__*/ _jsxDevRuntime.jsxDEV(_reactBootstrap.Row, {
@@ -36530,7 +36542,7 @@ class ProfileView extends _reactDefault.default.Component {
                                 children: " Favorite Movies"
                             }, void 0, false, {
                                 fileName: "src/components/profile-view/profile-view.jsx",
-                                lineNumber: 236,
+                                lineNumber: 238,
                                 columnNumber: 25
                             }, this),
                             /*#__PURE__*/ _jsxDevRuntime.jsxDEV(_reactBootstrap.Card, {
@@ -36541,14 +36553,14 @@ class ProfileView extends _reactDefault.default.Component {
                                             children: "No favorite movies"
                                         }, void 0, false, {
                                             fileName: "src/components/profile-view/profile-view.jsx",
-                                            lineNumber: 241,
+                                            lineNumber: 243,
                                             columnNumber: 37
                                         }, this),
                                         /*#__PURE__*/ _jsxDevRuntime.jsxDEV(_reactBootstrap.Card, {
                                             id: "favorite-movies-container"
                                         }, void 0, false, {
                                             fileName: "src/components/profile-view/profile-view.jsx",
-                                            lineNumber: 243,
+                                            lineNumber: 245,
                                             columnNumber: 33
                                         }, this),
                                         FavoriteMovies.length > 0 && movies.map((movie)=>{
@@ -36565,7 +36577,7 @@ class ProfileView extends _reactDefault.default.Component {
                                                         src: movie.ImageURL
                                                     }, void 0, false, {
                                                         fileName: "src/components/profile-view/profile-view.jsx",
-                                                        lineNumber: 249,
+                                                        lineNumber: 251,
                                                         columnNumber: 37
                                                     }, this),
                                                     /*#__PURE__*/ _jsxDevRuntime.jsxDEV(_reactBootstrap.Card.Body, {
@@ -36581,36 +36593,36 @@ class ProfileView extends _reactDefault.default.Component {
                                                                     children: "Remove from List"
                                                                 }, void 0, false, {
                                                                     fileName: "src/components/profile-view/profile-view.jsx",
-                                                                    lineNumber: 255,
+                                                                    lineNumber: 257,
                                                                     columnNumber: 51
                                                                 }, this)
                                                             ]
                                                         }, void 0, true, {
                                                             fileName: "src/components/profile-view/profile-view.jsx",
-                                                            lineNumber: 254,
+                                                            lineNumber: 256,
                                                             columnNumber: 33
                                                         }, this)
                                                     }, void 0, false, {
                                                         fileName: "src/components/profile-view/profile-view.jsx",
-                                                        lineNumber: 253,
+                                                        lineNumber: 255,
                                                         columnNumber: 33
                                                     }, this)
                                                 ]
                                             }, movie._id, true, {
                                                 fileName: "src/components/profile-view/profile-view.jsx",
-                                                lineNumber: 248,
+                                                lineNumber: 250,
                                                 columnNumber: 33
                                             }, this);
                                         })
                                     ]
                                 }, void 0, true, {
                                     fileName: "src/components/profile-view/profile-view.jsx",
-                                    lineNumber: 239,
+                                    lineNumber: 241,
                                     columnNumber: 25
                                 }, this)
                             }, void 0, false, {
                                 fileName: "src/components/profile-view/profile-view.jsx",
-                                lineNumber: 238,
+                                lineNumber: 240,
                                 columnNumber: 25
                             }, this),
                             /*#__PURE__*/ _jsxDevRuntime.jsxDEV(_reactBootstrap.Button, {
@@ -36620,157 +36632,44 @@ class ProfileView extends _reactDefault.default.Component {
                                 children: "Delete Profile"
                             }, void 0, false, {
                                 fileName: "src/components/profile-view/profile-view.jsx",
-                                lineNumber: 266,
+                                lineNumber: 268,
                                 columnNumber: 25
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "src/components/profile-view/profile-view.jsx",
-                        lineNumber: 235,
+                        lineNumber: 237,
                         columnNumber: 13
                     }, this)
                 }, void 0, false, {
                     fileName: "src/components/profile-view/profile-view.jsx",
-                    lineNumber: 234,
+                    lineNumber: 236,
                     columnNumber: 13
                 }, this)
             ]
         }, void 0, true, {
             fileName: "src/components/profile-view/profile-view.jsx",
-            lineNumber: 156,
+            lineNumber: 158,
             columnNumber: 1
         }, this);
     }
 }
+let mapStateToProps = (state)=>{
+    return {
+        movies: state.movies,
+        user: state.user
+    };
+};
+exports.default = _reactRedux.connect(mapStateToProps, {
+    setUser
+})(ProfileView);
 
   $parcel$ReactRefreshHelpers$3c12.postlude(module);
 } finally {
   window.$RefreshReg$ = prevRefreshReg;
   window.$RefreshSig$ = prevRefreshSig;
 }
-},{"react/jsx-dev-runtime":"iTorj","react":"21dqq","prop-types":"7wKI2","react-bootstrap":"3AD9A","axios":"jo6P5","@parcel/transformer-js/src/esmodule-helpers.js":"gkKU3","@parcel/transformer-react-refresh-wrap/lib/helpers/helpers.js":"km3Ru","./profile-view.scss":"eyKYH"}],"eyKYH":[function() {},{}],"divrl":[function(require,module,exports) {
-var $parcel$ReactRefreshHelpers$8284 = require("@parcel/transformer-react-refresh-wrap/lib/helpers/helpers.js");
-var prevRefreshReg = window.$RefreshReg$;
-var prevRefreshSig = window.$RefreshSig$;
-$parcel$ReactRefreshHelpers$8284.prelude(module);
-
-try {
-var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
-parcelHelpers.defineInteropFlag(exports);
-parcelHelpers.export(exports, "NavbarView", ()=>NavbarView
-);
-var _jsxDevRuntime = require("react/jsx-dev-runtime");
-var _react = require("react");
-var _reactDefault = parcelHelpers.interopDefault(_react);
-var _reactBootstrap = require("react-bootstrap");
-var _navbarViewScss = require("./navbar-view.scss");
-function NavbarView({ user  }) {
-    const onLoggedOut = ()=>{
-        localStorage.clear();
-        window.open("/", "_self");
-    };
-    const isAuth = ()=>{
-        if (typeof window == "undefined") return false;
-        if (localStorage.getItem("token")) return localStorage.getItem("token");
-        else return false;
-    };
-    return /*#__PURE__*/ _jsxDevRuntime.jsxDEV(_reactBootstrap.Container, {
-        fluid: true,
-        children: /*#__PURE__*/ _jsxDevRuntime.jsxDEV(_reactBootstrap.Navbar, {
-            className: "main-nav",
-            sticky: "top",
-            bg: "navColor",
-            expand: "lg",
-            children: [
-                /*#__PURE__*/ _jsxDevRuntime.jsxDEV(_reactBootstrap.Navbar.Brand, {
-                    className: "navbar-logo",
-                    href: "/",
-                    children: " Welcome to myFlix !"
-                }, void 0, false, {
-                    fileName: "src/components/navbar-view/navbar-view.jsx",
-                    lineNumber: 30,
-                    columnNumber: 5
-                }, this),
-                /*#__PURE__*/ _jsxDevRuntime.jsxDEV(_reactBootstrap.Navbar.Toggle, {
-                    "aria-controls": "responsive-navbar-nav"
-                }, void 0, false, {
-                    fileName: "src/components/navbar-view/navbar-view.jsx",
-                    lineNumber: 31,
-                    columnNumber: 7
-                }, this),
-                /*#__PURE__*/ _jsxDevRuntime.jsxDEV(_reactBootstrap.Navbar.Collapse, {
-                    id: "responsive-navbar-nav",
-                    children: /*#__PURE__*/ _jsxDevRuntime.jsxDEV(_reactBootstrap.Nav, {
-                        className: "me-auto",
-                        children: [
-                            isAuth() && /*#__PURE__*/ _jsxDevRuntime.jsxDEV(_reactBootstrap.Nav.Link, {
-                                href: "/profile",
-                                children: "Profile"
-                            }, void 0, false, {
-                                fileName: "src/components/navbar-view/navbar-view.jsx",
-                                lineNumber: 36,
-                                columnNumber: 15
-                            }, this),
-                            isAuth() && /*#__PURE__*/ _jsxDevRuntime.jsxDEV(_reactBootstrap.Button, {
-                                variant: "link",
-                                onClick: ()=>{
-                                    onLoggedOut();
-                                },
-                                children: "Logout"
-                            }, void 0, false, {
-                                fileName: "src/components/navbar-view/navbar-view.jsx",
-                                lineNumber: 39,
-                                columnNumber: 17
-                            }, this),
-                            !isAuth() && /*#__PURE__*/ _jsxDevRuntime.jsxDEV(_reactBootstrap.Nav.Link, {
-                                href: "/",
-                                children: "Sign in"
-                            }, void 0, false, {
-                                fileName: "src/components/navbar-view/navbar-view.jsx",
-                                lineNumber: 42,
-                                columnNumber: 15
-                            }, this),
-                            !isAuth() && /*#__PURE__*/ _jsxDevRuntime.jsxDEV(_reactBootstrap.Nav.Link, {
-                                href: "/register",
-                                children: "Sign up"
-                            }, void 0, false, {
-                                fileName: "src/components/navbar-view/navbar-view.jsx",
-                                lineNumber: 45,
-                                columnNumber: 15
-                            }, this)
-                        ]
-                    }, void 0, true, {
-                        fileName: "src/components/navbar-view/navbar-view.jsx",
-                        lineNumber: 34,
-                        columnNumber: 15
-                    }, this)
-                }, void 0, false, {
-                    fileName: "src/components/navbar-view/navbar-view.jsx",
-                    lineNumber: 32,
-                    columnNumber: 7
-                }, this)
-            ]
-        }, void 0, true, {
-            fileName: "src/components/navbar-view/navbar-view.jsx",
-            lineNumber: 29,
-            columnNumber: 5
-        }, this)
-    }, void 0, false, {
-        fileName: "src/components/navbar-view/navbar-view.jsx",
-        lineNumber: 28,
-        columnNumber: 5
-    }, this);
-}
-_c = NavbarView;
-var _c;
-$RefreshReg$(_c, "NavbarView");
-
-  $parcel$ReactRefreshHelpers$8284.postlude(module);
-} finally {
-  window.$RefreshReg$ = prevRefreshReg;
-  window.$RefreshSig$ = prevRefreshSig;
-}
-},{"react/jsx-dev-runtime":"iTorj","react":"21dqq","react-bootstrap":"3AD9A","./navbar-view.scss":"cYTZj","@parcel/transformer-js/src/esmodule-helpers.js":"gkKU3","@parcel/transformer-react-refresh-wrap/lib/helpers/helpers.js":"km3Ru"}],"cYTZj":[function() {},{}],"bdVon":[function(require,module,exports) {
+},{"react/jsx-dev-runtime":"iTorj","react":"21dqq","prop-types":"7wKI2","react-bootstrap":"3AD9A","axios":"jo6P5","@parcel/transformer-js/src/esmodule-helpers.js":"gkKU3","@parcel/transformer-react-refresh-wrap/lib/helpers/helpers.js":"km3Ru","./profile-view.scss":"eyKYH","react-redux":"bdVon","../../actions/actions":"biFwH"}],"eyKYH":[function() {},{}],"bdVon":[function(require,module,exports) {
 var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
 parcelHelpers.defineInteropFlag(exports);
 parcelHelpers.export(exports, "batch", ()=>_reactBatchedUpdates.unstable_batchedUpdates
@@ -38300,29 +38199,19 @@ parcelHelpers.export(exports, "SET_USER", ()=>SET_USER
 );
 parcelHelpers.export(exports, "SET_FILTER", ()=>SET_FILTER
 );
-parcelHelpers.export(exports, "SET_USERDATA", ()=>SET_USERDATA
-);
 parcelHelpers.export(exports, "setMovies", ()=>setMovies
-);
-parcelHelpers.export(exports, "setUser", ()=>setUser
 );
 parcelHelpers.export(exports, "setFilter", ()=>setFilter
 );
-parcelHelpers.export(exports, "setUserData", ()=>setUserData
+parcelHelpers.export(exports, "setUser", ()=>setUser
 );
 const SET_MOVIES = 'SET_MOVIES';
 const SET_USER = 'SET_USER';
 const SET_FILTER = 'SET_FILTER';
-const SET_USERDATA = "SET_USERDATA";
 function setMovies(value) {
+    console.log('SET_MOVIES action triggered');
     return {
         type: SET_MOVIES,
-        value
-    };
-}
-function setUser(value) {
-    return {
-        type: SET_USER,
         value
     };
 }
@@ -38332,14 +38221,144 @@ function setFilter(value) {
         value
     };
 }
-function setUserData(value) {
+function setUser(value) {
+    console.log('SET_MOVIES action triggered');
     return {
-        type: SET_USERDATA,
+        type: SET_USER,
         value
     };
 }
 
-},{"@parcel/transformer-js/src/esmodule-helpers.js":"gkKU3"}],"bPxKK":[function(require,module,exports) {
+},{"@parcel/transformer-js/src/esmodule-helpers.js":"gkKU3"}],"divrl":[function(require,module,exports) {
+var $parcel$ReactRefreshHelpers$8284 = require("@parcel/transformer-react-refresh-wrap/lib/helpers/helpers.js");
+var prevRefreshReg = window.$RefreshReg$;
+var prevRefreshSig = window.$RefreshSig$;
+$parcel$ReactRefreshHelpers$8284.prelude(module);
+
+try {
+var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
+parcelHelpers.defineInteropFlag(exports);
+parcelHelpers.export(exports, "NavbarView", ()=>NavbarView
+);
+var _jsxDevRuntime = require("react/jsx-dev-runtime");
+var _react = require("react");
+var _reactDefault = parcelHelpers.interopDefault(_react);
+var _reactBootstrap = require("react-bootstrap");
+var _navbarViewScss = require("./navbar-view.scss");
+function NavbarView({ user  }) {
+    const onLoggedOut = ()=>{
+        localStorage.clear();
+        window.open("/", "_self");
+    };
+    const isAuth = ()=>{
+        if (typeof window == "undefined") return false;
+        if (localStorage.getItem("token")) return localStorage.getItem("token");
+        else return false;
+    };
+    return /*#__PURE__*/ _jsxDevRuntime.jsxDEV(_reactBootstrap.Container, {
+        fluid: true,
+        children: /*#__PURE__*/ _jsxDevRuntime.jsxDEV(_reactBootstrap.Navbar, {
+            className: "main-nav",
+            sticky: "top",
+            bg: "navColor",
+            expand: "lg",
+            children: [
+                /*#__PURE__*/ _jsxDevRuntime.jsxDEV(_reactBootstrap.Navbar.Brand, {
+                    className: "navbar-logo",
+                    href: "/",
+                    children: " Welcome to myFlix !"
+                }, void 0, false, {
+                    fileName: "src/components/navbar-view/navbar-view.jsx",
+                    lineNumber: 30,
+                    columnNumber: 5
+                }, this),
+                /*#__PURE__*/ _jsxDevRuntime.jsxDEV(_reactBootstrap.Navbar.Toggle, {
+                    "aria-controls": "responsive-navbar-nav"
+                }, void 0, false, {
+                    fileName: "src/components/navbar-view/navbar-view.jsx",
+                    lineNumber: 31,
+                    columnNumber: 7
+                }, this),
+                /*#__PURE__*/ _jsxDevRuntime.jsxDEV(_reactBootstrap.Navbar.Collapse, {
+                    id: "responsive-navbar-nav",
+                    children: /*#__PURE__*/ _jsxDevRuntime.jsxDEV(_reactBootstrap.Nav, {
+                        className: "me-auto",
+                        children: [
+                            isAuth() && /*#__PURE__*/ _jsxDevRuntime.jsxDEV(_reactBootstrap.Nav.Link, {
+                                href: "/profile",
+                                children: "Profile"
+                            }, void 0, false, {
+                                fileName: "src/components/navbar-view/navbar-view.jsx",
+                                lineNumber: 36,
+                                columnNumber: 15
+                            }, this),
+                            isAuth() && /*#__PURE__*/ _jsxDevRuntime.jsxDEV(_reactBootstrap.Button, {
+                                variant: "link",
+                                onClick: ()=>{
+                                    onLoggedOut();
+                                },
+                                children: "Logout"
+                            }, void 0, false, {
+                                fileName: "src/components/navbar-view/navbar-view.jsx",
+                                lineNumber: 39,
+                                columnNumber: 17
+                            }, this),
+                            !isAuth() && /*#__PURE__*/ _jsxDevRuntime.jsxDEV(_reactBootstrap.Nav.Link, {
+                                href: "/",
+                                children: "Sign in"
+                            }, void 0, false, {
+                                fileName: "src/components/navbar-view/navbar-view.jsx",
+                                lineNumber: 42,
+                                columnNumber: 15
+                            }, this),
+                            !isAuth() && /*#__PURE__*/ _jsxDevRuntime.jsxDEV(_reactBootstrap.Nav.Link, {
+                                href: "/register",
+                                children: "Sign up"
+                            }, void 0, false, {
+                                fileName: "src/components/navbar-view/navbar-view.jsx",
+                                lineNumber: 45,
+                                columnNumber: 15
+                            }, this),
+                            /*#__PURE__*/ _jsxDevRuntime.jsxDEV("spinner", {
+                                animation: "border"
+                            }, void 0, false, {
+                                fileName: "src/components/navbar-view/navbar-view.jsx",
+                                lineNumber: 47,
+                                columnNumber: 15
+                            }, this)
+                        ]
+                    }, void 0, true, {
+                        fileName: "src/components/navbar-view/navbar-view.jsx",
+                        lineNumber: 34,
+                        columnNumber: 15
+                    }, this)
+                }, void 0, false, {
+                    fileName: "src/components/navbar-view/navbar-view.jsx",
+                    lineNumber: 32,
+                    columnNumber: 7
+                }, this)
+            ]
+        }, void 0, true, {
+            fileName: "src/components/navbar-view/navbar-view.jsx",
+            lineNumber: 29,
+            columnNumber: 5
+        }, this)
+    }, void 0, false, {
+        fileName: "src/components/navbar-view/navbar-view.jsx",
+        lineNumber: 28,
+        columnNumber: 5
+    }, this);
+}
+_c = NavbarView;
+var _c;
+$RefreshReg$(_c, "NavbarView");
+
+  $parcel$ReactRefreshHelpers$8284.postlude(module);
+} finally {
+  window.$RefreshReg$ = prevRefreshReg;
+  window.$RefreshSig$ = prevRefreshSig;
+}
+},{"react/jsx-dev-runtime":"iTorj","react":"21dqq","react-bootstrap":"3AD9A","./navbar-view.scss":"cYTZj","@parcel/transformer-js/src/esmodule-helpers.js":"gkKU3","@parcel/transformer-react-refresh-wrap/lib/helpers/helpers.js":"km3Ru"}],"cYTZj":[function() {},{}],"bPxKK":[function(require,module,exports) {
 var $parcel$ReactRefreshHelpers$89c8 = require("@parcel/transformer-react-refresh-wrap/lib/helpers/helpers.js");
 var prevRefreshReg = window.$RefreshReg$;
 var prevRefreshSig = window.$RefreshSig$;
@@ -38486,8 +38505,33 @@ var _cardDefault = parcelHelpers.interopDefault(_card);
 var _movieCardScss = require("./movie-card.scss");
 var _reactRouterDom = require("react-router-dom");
 class MovieCard extends _reactDefault.default.Component {
+    constructor(){
+        super();
+        this.state = {
+            FavoriteMovies: []
+        };
+    }
+    onAddFavorite = (movie)=>{
+        const Username = localStorage.getItem('user');
+        const token = localStorage.getItem('token');
+        axios.post(axios.get`https://mysterious-wildwood-desperado.herokuapp.com/users/${Username}/movies/${movie._id}`, {
+            FavoriteMovies: this.state.FavoriteMovies
+        }, {
+            headers: {
+                Authorization: `Bearer ${token}`
+            }
+        }).then((response)=>{
+            this.setState({
+                FavoriteMovies: response.data.FavoriteMovies
+            });
+            console.log(response);
+            alert("Movie Added");
+        }).catch(function(error) {
+            console.log(error);
+        });
+    };
     render() {
-        const { movie  } = this.props;
+        const { movie , onAddFavorite  } = this.props;
         return /*#__PURE__*/ _jsxDevRuntime.jsxDEV(_cardDefault.default, {
             className: "bg-light text-black",
             border: "danger",
@@ -38506,52 +38550,45 @@ class MovieCard extends _reactDefault.default.Component {
                     }
                 }, void 0, false, {
                     fileName: "src/components/movie-card/movie-card.jsx",
-                    lineNumber: 16,
+                    lineNumber: 48,
                     columnNumber: 1
                 }, this),
-                /*#__PURE__*/ _jsxDevRuntime.jsxDEV(_cardDefault.default.Body, {
-                    children: [
-                        /*#__PURE__*/ _jsxDevRuntime.jsxDEV(_cardDefault.default.Title, {
-                            children: movie.Title
-                        }, void 0, false, {
-                            fileName: "src/components/movie-card/movie-card.jsx",
-                            lineNumber: 18,
-                            columnNumber: 1
-                        }, this),
-                        /*#__PURE__*/ _jsxDevRuntime.jsxDEV(_reactRouterDom.Link, {
-                            to: `/movies/${movie._id}`,
-                            children: /*#__PURE__*/ _jsxDevRuntime.jsxDEV(_buttonDefault.default, {
-                                variant: "link",
-                                children: "More details"
-                            }, void 0, false, {
-                                fileName: "src/components/movie-card/movie-card.jsx",
-                                lineNumber: 20,
-                                columnNumber: 9
-                            }, this)
-                        }, void 0, false, {
-                            fileName: "src/components/movie-card/movie-card.jsx",
-                            lineNumber: 19,
-                            columnNumber: 9
-                        }, this),
-                        /*#__PURE__*/ _jsxDevRuntime.jsxDEV(_buttonDefault.default, {
-                            id: "movie-view-button",
-                            onClick: ()=>{},
-                            children: "Add to favorites"
-                        }, void 0, false, {
-                            fileName: "src/components/movie-card/movie-card.jsx",
-                            lineNumber: 22,
-                            columnNumber: 9
-                        }, this)
-                    ]
-                }, void 0, true, {
+                /*#__PURE__*/ _jsxDevRuntime.jsxDEV(_cardDefault.default.Title, {
+                    children: movie.Title
+                }, void 0, false, {
                     fileName: "src/components/movie-card/movie-card.jsx",
-                    lineNumber: 17,
+                    lineNumber: 49,
                     columnNumber: 1
+                }, this),
+                /*#__PURE__*/ _jsxDevRuntime.jsxDEV(_reactRouterDom.Link, {
+                    to: `/movies/${movie._id}`,
+                    children: /*#__PURE__*/ _jsxDevRuntime.jsxDEV(_buttonDefault.default, {
+                        variant: "link",
+                        children: "More details"
+                    }, void 0, false, {
+                        fileName: "src/components/movie-card/movie-card.jsx",
+                        lineNumber: 51,
+                        columnNumber: 9
+                    }, this)
+                }, void 0, false, {
+                    fileName: "src/components/movie-card/movie-card.jsx",
+                    lineNumber: 50,
+                    columnNumber: 9
+                }, this),
+                /*#__PURE__*/ _jsxDevRuntime.jsxDEV(_buttonDefault.default, {
+                    id: "movie-view-button",
+                    onClick: (movie)=>this.onAddFavorite(onAddFavorite)
+                    ,
+                    children: "Add to favorites"
+                }, void 0, false, {
+                    fileName: "src/components/movie-card/movie-card.jsx",
+                    lineNumber: 53,
+                    columnNumber: 9
                 }, this)
             ]
         }, void 0, true, {
             fileName: "src/components/movie-card/movie-card.jsx",
-            lineNumber: 15,
+            lineNumber: 47,
             columnNumber: 1
         }, this);
     }
@@ -38559,7 +38596,13 @@ class MovieCard extends _reactDefault.default.Component {
 MovieCard.propTypes = {
     movie: _propTypesDefault.default.shape({
         Title: _propTypesDefault.default.string.isRequired,
-        ImageURL: _propTypesDefault.default.string.isRequired
+        ImageURL: _propTypesDefault.default.string.isRequired,
+        Genre: _propTypesDefault.default.shape({
+            Name: _propTypesDefault.default.string.isRequired
+        }),
+        Director: _propTypesDefault.default.shape({
+            Name: _propTypesDefault.default.string.isRequired
+        })
     }).isRequired
 };
 exports.default = MovieCard;
@@ -38590,22 +38633,18 @@ function movies(state = [], action) {
             return state;
     }
 }
-function user(state = {
-    Username: '',
-    Password: '',
-    Email: '',
-    Birthday: '',
-    FavoriteMovies: []
-}, action) {
-    const { field , value  } = action;
+function user(state = [], action) {
     switch(action.type){
         case _actions.SET_USER:
-            return value;
-        case _actions.UPDATE_USER:
-            return {
-                ...state,
-                [field]: value
-            };
+            return action.value;
+        default:
+            return state;
+    }
+}
+function userData(state = "", action) {
+    switch(action.type){
+        case _actions.SET_USERDATA:
+            return action.value;
         default:
             return state;
     }
@@ -38613,7 +38652,8 @@ function user(state = {
 const moviesApp = _redux.combineReducers({
     visibilityFilter,
     movies,
-    user
+    user,
+    userData
 });
 exports.default = moviesApp;
 
