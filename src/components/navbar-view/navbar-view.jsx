@@ -44,7 +44,7 @@ export function NavbarView({user}) {
                   {!isAuth() && (
               <Nav.Link href="/register">Sign up</Nav.Link>
               )}
-
+              <spinner animation= "border"/>
               </Nav>
             
       </Navbar.Collapse>
