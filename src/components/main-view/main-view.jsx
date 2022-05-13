@@ -81,7 +81,9 @@ render() {
                   if (!user) return <Col>
                       <LoginView onLoggedIn={user => this.onLoggedIn(user)} />
                   </Col>
-                  if (movies.length === 0) return <div className="main-view" />;
+                  console.log(user)
+         
+                  if (!movies || movies.length === 0) return <div className="main-view" />;
                   return <MoviesList movies={movies} />;
               }} />
 
