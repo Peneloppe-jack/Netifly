@@ -54,8 +54,7 @@ export function RegistrationView(props) {
     axios.post('https://mysterious-wildwood-desperado.herokuapp.com/users',{
     Username: username,
     Password: password,
-    Email: email,
-    Birthday: birthday
+    Email: email
   })
     .then(response => {
       const data = response.data; 
@@ -67,7 +66,7 @@ export function RegistrationView(props) {
     })
     .catch(response => {
       console.error(response);
-      alert('something wasn\'t entered right');
+      alert('something went wrong');
     });
   }
 };

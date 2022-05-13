@@ -1,9 +1,11 @@
 import React from 'react';
 import ReactDOM from 'react-dom';
-import { Provider } from 'react-redux';
-import moviesApp from './reducers/reducers.js';
 import { devToolsEnhancer } from 'redux-devtools-extension';
 import  { createStore }  from 'redux';
+import { Provider } from 'react-redux';
+import moviesApp from './reducers/reducers.js';
+
+
 
 import  Container  from "react-bootstrap/Container";
 
@@ -13,7 +15,7 @@ import './index.scss';
 
 
 
-const store = createStore ( devToolsEnhancer(), moviesApp);
+const store = createStore ( moviesApp, devToolsEnhancer());
 class MyFlixApplication extends React.Component {
  render() {
     return (

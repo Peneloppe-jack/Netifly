@@ -3,8 +3,7 @@ import axios from 'axios';
 import { connect } from 'react-redux';
 import { BrowserRouter as Router, Route, Redirect } from "react-router-dom";
 
-import Row from 'react-bootstrap/Row';
-import Col from 'react-bootstrap/Col';
+import {Row, Col, Button} from 'react-bootstrap';
 import { setMovies, setUser } from '../../actions/actions';
 import MoviesList from '../movies-list/movies-list';
 
@@ -22,7 +21,7 @@ import { NavbarView } from "../navbar-view/navbar-view.jsx";
 
 import './main-view.scss'
 
-class MainView extends React.Component {
+export class MainView extends React.Component {
   constructor() {
     super();
     this.state = {
@@ -191,4 +190,4 @@ return { movies: state.movies }
 }
 
 
-export default connect(mapStateToProps, { setMovies })(MainView);
+export default connect(mapStateToProps, { setMovies, setUser })(MainView);
