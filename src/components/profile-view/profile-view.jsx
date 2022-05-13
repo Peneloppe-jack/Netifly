@@ -107,7 +107,7 @@ export class ProfileView extends React.Component {
         const Username = localStorage.getItem('user');
         const token = localStorage.getItem('token');
 
-        axios.delete(`https://movieanorak.herokuapp.com/users/${Username}`, {
+        axios.delete(`https://mysterious-wildwood-desperado.herokuapp.com/users/${Username}`, {
             headers: { Authorization: `Bearer ${token}` }
         })
             .then((response) => {
@@ -217,7 +217,7 @@ export class ProfileView extends React.Component {
                             type="date"
                             name="Birthday"
                             value={Birthday}
-                            onChange={(e) => this.setBirthdaye(e.target.value)}
+                            onChange={(e) => this.setBirthday(e.target.value)}
                             required
                         />
                     </FormGroup>
