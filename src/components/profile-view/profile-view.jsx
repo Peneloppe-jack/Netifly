@@ -3,6 +3,7 @@ import "./profile-view.scss";
 import PropTypes from "prop-types";
 import { connect } from 'react-redux';
 import { setMovies } from '../../actions/actions';
+import { setUser } from '../../actions/actions';
 import { Container, Card, Button, Row, Col, Form, FormGroup, FormControl } from "react-bootstrap";
 import axios from "axios";
 

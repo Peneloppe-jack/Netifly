@@ -3,7 +3,7 @@ import ReactDOM from 'react-dom';
 import { Provider } from 'react-redux';
 import moviesApp from './reducers/reducers.js';
 import { devToolsEnhancer } from 'redux-devtools-extension';
-import  createStore  from 'redux';
+import  { createStore }  from 'redux';
 
 import  Container  from "react-bootstrap/Container";
 
