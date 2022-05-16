@@ -17,6 +17,11 @@ const mapDispatchToProps = dispatch => {
   return bindActionCreators({ setFilter : setFilter }, dispatch)
 }
 
+
+const mapStateToProps = state => {
+  return { visibilityFilter:  state.visibilityFilter };
+};
+
 export default connect(
   null,
   mapDispatchToProps
