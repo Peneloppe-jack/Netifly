@@ -1,10 +1,11 @@
 import React from 'react';
 import axios from 'axios';
 import { connect } from 'react-redux';
+import { bindActionCreators } from 'redux';
 import { BrowserRouter as Router, Route, Redirect } from "react-router-dom";
 
 import {Row, Col, Button} from 'react-bootstrap';
-import { setMovies, setUser } from '../../actions/actions';
+import { setMovies, setUser } from '../../actions/actions.js';
 import MoviesList from '../movies-list/movies-list';
 
 
@@ -21,20 +22,22 @@ import { NavbarView } from "../navbar-view/navbar-view.jsx";
 
 import './main-view.scss'
 
-export class MainView extends React.Component {
+class MainView extends React.Component {
   constructor() {
     super();
     this.state = {
-        user: null
+        user: null,
+        movies: []
     };
 }
 
+
 getMovies(token) {
-    axios.get('https://mysterious-wildwood-desperado.herokuapp.com/movies', {
+   axios.get('https://mysterious-wildwood-desperado.herokuapp.com/movies', {
       headers: { Authorization:`Bearer ${token}`}
     })
     .then(response => {
-      this.props.setMovies(response.data);
+        this.props.setMovies(response.data);
   })
   .catch(function (error) {
       console.log(error);
@@ -68,11 +71,11 @@ onLoggedOut() {
 }
 
 render() {
-  let { movies } = this.props;
-  let { user } = this.state;
+    let movies = this.props.movies;
+    let { user } = this.state;
   return (
       <Router>
-          <Button id="logout-button" onClick={() => { this.onLoggedOut() }}>Logout</Button>
+      
           <Row>
               <NavbarView user={user} />
           </Row>
@@ -82,7 +85,7 @@ render() {
                       <LoginView onLoggedIn={user => this.onLoggedIn(user)} />
                   </Col>
                   console.log(user)
-         
+                  console.log('movies',movies)
                   if (!movies || movies.length === 0) return <div className="main-view" />;
                   return <MoviesList movies={movies} />;
               }} />
@@ -185,11 +188,13 @@ render() {
     </Router>
   );}}
 
-
-
-let mapStateToProps = state => {
-return { movies: state.movies }
+mapStateToProps = state => {
+    return { movies: state.movies }
 }
 
+mapDispatchToProps = dispatch => {
+    return bindActionCreators({ setMovies : setMovies }, dispatch)
+}
+    
 
-export default connect(mapStateToProps, { setMovies, setUser })(MainView);
+export default connect(mapStateToProps, mapDispatchToProps)(MainView);

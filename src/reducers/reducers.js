@@ -1,6 +1,6 @@
 import { combineReducers } from 'redux';
 
-import { SET_FILTER, SET_MOVIES, SET_USER } from '../actions/actions';
+import { SET_FILTER, SET_MOVIES, SET_USER } from '../actions/actions.js';
 
 function visibilityFilter(state = '', action) {
   switch (action.type) {

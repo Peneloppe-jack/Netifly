@@ -3,6 +3,7 @@ import PropTypes from 'prop-types';
 import Button from 'react-bootstrap/Button';
 import Card from 'react-bootstrap/Card';
 import './movie-card.scss';
+import axios from 'axios';
 
 import { Link } from "react-router-dom";
 
@@ -50,7 +51,7 @@ render() {
         <Link to={`/movies/${movie._id}`}>
         <Button variant="link">More details</Button>
         </Link>
-        <Button id="movie-view-button" onClick={(movie) =>this.onAddFavorite (onAddFavorite)}>Add to favorites</Button>
+        <Button variant="primary" value={movie._id} onClick={() => this.onAddFavorite(movie)}>Add to Favorite</Button>
         </Card>
 
 ); 
