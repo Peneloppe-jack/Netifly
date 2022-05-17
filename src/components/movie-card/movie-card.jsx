@@ -40,6 +40,7 @@ onAddFavorite = (movie) => {
         });
 };
 
+
 render() {
     const { movie, onAddFavorite } = this.props;
 
@@ -51,7 +52,7 @@ render() {
         <Link to={`/movies/${movie._id}`}>
         <Button variant="link">More details</Button>
         </Link>
-        <Button variant="primary" value={movie._id} onClick={() => this.onAddFavorite(movie)}>Add to Favorite</Button>
+        <Button variant="primary" value={movie._id} onClick={() => onAddFavorite(movie)}>Add to Favorite</Button>
         </Card>
 
 ); 

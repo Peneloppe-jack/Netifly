@@ -3,6 +3,7 @@ import PropTypes from "prop-types";
 import { Button, Col, Row } from "react-bootstrap";
 import { Link } from "react-router-dom";
 
+
 import './genre-view.scss'
 
 export class GenreView extends React.Component{

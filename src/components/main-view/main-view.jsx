@@ -87,13 +87,13 @@ render() {
                   console.log(user)
                   console.log('movies',movies)
                   if (!movies || movies.length === 0) return <div className="main-view" />;
-                  return <MoviesList movies={movies} />;
+                    return <MoviesList movies={movies} />;
               }} />
 
               <Route path="/register" render={() => {
                   if (user) return <Redirect to="/" />
                   return <Col>
-                      <LoginView />
+                      <RegistrationView />
                   </Col>
               }} />
 
@@ -189,11 +189,11 @@ render() {
   );}}
 
 mapStateToProps = state => {
-    return { movies: state.movies }
+    return { movies: state.movies, user: state.user }
 }
 
 mapDispatchToProps = dispatch => {
-    return bindActionCreators({ setMovies : setMovies }, dispatch)
+    return bindActionCreators({ setMovies: setMovies, setUser: setUser }, dispatch)
 }
     
 

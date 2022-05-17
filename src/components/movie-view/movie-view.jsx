@@ -4,7 +4,6 @@ import { Card, Col, Row, Container, Button } from "react-bootstrap";
 import { Link } from "react-router-dom";
 
 import './movie-view.scss';
-
 export class MovieView extends React.Component {
 
   
@@ -18,7 +17,7 @@ return (
 
               <Card className="movie-view">
                   <Card.Body>
-                      <Card.Img id="movie-view-image" variant="top" src={movie.ImagePath}/>
+                      <Card.Img id="movie-view-image" variant="top" src={movie.ImageURL}/>
                       <Card.Title id="movie-title" className="movie-title">{movie.Title}</Card.Title>
                       <Card.Text id="movie-description" className="movie-description">
                         {movie.Description}</Card.Text>
@@ -49,7 +48,7 @@ MovieView.propTypes = {
   movie: PropTypes.shape({
     Title: PropTypes.string.isRequired,
     Description: PropTypes.string.isRequired,
-    ImagePath: PropTypes.string.isRequired,
+    ImageURL: PropTypes.string.isRequired,
 
       Genre: PropTypes.shape({
         Name: PropTypes.string.isRequired,

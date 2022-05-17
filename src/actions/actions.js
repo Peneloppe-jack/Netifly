@@ -21,7 +21,7 @@ export function setFilter(value) {
 
 export function setUser(value) {
   
-  console.log('SET_MOVIES action triggered');
+  console.log('SET_USER action triggered');
   return { type: SET_USER, 
     value };
 }
