@@ -156,20 +156,14 @@ render() {
 
 
 
-              <Route path="/directors/:name" render={({ match, history }) => {
+              <Route path="/director/:name" render={({ match, history }) => {
                   if (movies.length === 0) return <div className="main-view" />;
                   return <Col md={8}>
                       <DirectorView director={movies.find(m => m.Director.Name === match.params.name).Director} onBackClick={() => history.goBack()} />
                   </Col>
               }} />
 
-              <Route path="/genres/:name" render={({ match, history }) => {
-                  if (movies.length === 0) return <div className="main-view" />;
-                  return <Col md={8}>
-                      <GenreView genre={movies.find(m => m.Genre.Name === match.params.name).Genre} onBackClick={() => history.goBack()} />
-                  </Col>
-              }} />
-
+           
 
               <Route path='/users/:username'
               render={({ history, match }) => {
