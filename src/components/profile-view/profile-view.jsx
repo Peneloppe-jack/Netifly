@@ -147,7 +147,7 @@ export class ProfileView extends React.Component {
     }
 
     render() {
-        const { movies, onBackClick } = this.props;
+        const { movies } = this.props;
         const { FavoriteMovies, Username, Email, Birthday } = this.state;
 
         if (!Username) {
@@ -245,7 +245,7 @@ export class ProfileView extends React.Component {
                                 )}
                                 <Card id="favorite-movies-container"/>
                                     {FavoriteMovies.length > 0 && movies.map((movie) => {
-                                        if (movie._id === FavoriteMovies.find((fav) => fav === movie._id)
+                                        if (movie._id === FavoriteMovies.find((FavoriteMovies) => FavoriteMovies === movie._id)
                                         ) {
                                  return (
                                 <Card sx={12} md= {6}lg={3} className="favorite-movie" key={movie._id} >
@@ -255,7 +255,9 @@ export class ProfileView extends React.Component {
                                     src={movie.ImageURL}/>
                                 <Card.Body>
                                 <Card.Title className="movie-title">
-                                    {movie.Title} <Button value={movie._id} onClick={(e) => this.onRemoveFavorite(e, movie)}>Remove from List</Button>
+                                    {movie.Title}
+                                    <Button variant="danger" type="submit" value={movie._id} onClick={(e) =>
+                                     this.onRemoveFavorite(e, movie)}>Remove</Button>
                                 </Card.Title>
                  
                                  </Card.Body>

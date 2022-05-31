@@ -19,9 +19,7 @@ onAddFavorite = (movie) => {
     const Username = localStorage.getItem('user');
     const token = localStorage.getItem('token');
 
-    axios.post(
-       
-      axios.get`https://mysterious-wildwood-desperado.herokuapp.com/users/${Username}/movies/${movie._id}`,
+    axios.post(`https://mysterious-wildwood-desperado.herokuapp.com/users/${Username}/movies/${movie._id}`,
         {
             FavoriteMovies: this.state.FavoriteMovies
         },
@@ -29,11 +27,12 @@ onAddFavorite = (movie) => {
             headers: { Authorization: `Bearer ${token}` },
         })
         .then((response) => {
+          console.log(response.data)
             this.setState({
                 FavoriteMovies: response.data.FavoriteMovies
             });
             console.log(response);
-            alert("Movie Added");
+            alert("Movie Added to list");
         })
         .catch(function (error) {
             console.log(error);
@@ -42,7 +41,7 @@ onAddFavorite = (movie) => {
 
 
 render() {
-    const { movie, onAddFavorite } = this.props;
+    const { movie } = this.props;
 
     return (
 
@@ -52,7 +51,7 @@ render() {
         <Link to={`/movies/${movie._id}`}>
         <Button variant="link">More details</Button>
         </Link>
-        <Button variant="primary" value={movie._id} onClick={() => onAddFavorite(movie)}>Add to Favorite</Button>
+        <Button variant="primary" value={movie._id} onClick={() => this.onAddFavorite(movie)}>Add to Favorite</Button>
         </Card>
 
 ); 
