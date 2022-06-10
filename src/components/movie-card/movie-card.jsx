@@ -4,10 +4,14 @@ import Button from 'react-bootstrap/Button';
 import Card from 'react-bootstrap/Card';
 import './movie-card.scss';
 import axios from 'axios';
+import { connect } from 'react-redux';
+import { bindActionCreators } from 'redux';
+import { setFavoriteMovies } from '../../actions/actions.js';
+
 
 import { Link } from "react-router-dom";
 
-export class MovieCard extends React.Component {
+class MovieCard extends React.Component {
   constructor() {
     super();
     this.state = {
@@ -21,7 +25,7 @@ onAddFavorite = (movie) => {
 
     axios.post(`https://mysterious-wildwood-desperado.herokuapp.com/users/${Username}/movies/${movie._id}`,
         {
-            FavoriteMovies: this.state.FavoriteMovies
+            FavoriteMovies: this.props.FavoriteMovies
         },
         {
             headers: { Authorization: `Bearer ${token}` },
@@ -29,7 +33,7 @@ onAddFavorite = (movie) => {
         .then((response) => {
           console.log(response.data)
             this.setState({
-                FavoriteMovies: response.data.FavoriteMovies
+                FavoriteMovies: response.data.this.props.setFavoriteMovies
             });
             console.log(response);
             alert("Movie Added to list");
@@ -71,4 +75,13 @@ render() {
     };
     
   
-    export default MovieCard;
+    mapStateToProps = state => {
+      return { movie: state.movie, FavoriteMovies: state.FavoriteMovies }
+  }
+  
+  mapDispatchToProps = dispatch => {
+      return bindActionCreators({ setFavoriteMovies: setFavoriteMovies }, dispatch)
+  }
+      
+  
+  export default connect(mapStateToProps, mapDispatchToProps)(MovieCard);
