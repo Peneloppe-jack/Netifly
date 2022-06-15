@@ -2,10 +2,45 @@ import React from "react";
 import PropTypes from 'prop-types';
 import { Card, Col, Row, Container, Button } from "react-bootstrap";
 import { Link } from "react-router-dom";
+import axios from 'axios';
+import { connect } from 'react-redux';
+import { bindActionCreators } from 'redux';
+import { setFavoriteMovies } from '../../actions/actions.js';
 
 import './movie-view.scss';
-export class MovieView extends React.Component {
 
+class MovieView extends React.Component {
+  constructor() {
+    super();
+    this.state = {
+        FavoriteMovies: []
+    };
+}
+
+onAddFavorite = (movie) => {
+    const Username = localStorage.getItem('user');
+    const token = localStorage.getItem('token');
+
+    axios.post(`https://mysterious-wildwood-desperado.herokuapp.com/users/${Username}/movies/${movie._id}`,
+        {
+            FavoriteMovies: this.props.FavoriteMovies
+        },
+        {
+            headers: { Authorization: `Bearer ${token}` },
+        })
+        .then((response) => {
+          console.log(response.data)
+            this.props.setFavoriteMovies(
+               response.data.FavoriteMovies
+            );
+            console.log(response);
+            alert("Movie Added to list");
+            window.open('/profile', '_self');
+        })
+        .catch(function (error) {
+            console.log(error);
+        });
+};
   
   render () {
     const { movie, onBackClick} = this.props;
@@ -35,8 +70,10 @@ return (
                   </Card.Body>
               </Card>
               <Button id="movie-view-button" onClick={() => { onBackClick(); }}>Back</Button>
-              <Button id="movie-view-button" onClick={() => { }}>Add to favorites</Button>
-     </Col>
+              <Link to={`/movies/${movie._id}`}>
+              <Button variant="primary" value={movie._id} onClick={() => this.onAddFavorite(movie)}>Add to Favorite</Button>
+              </Link>
+               </Col>
     </Row>
     </Container>
   );
@@ -65,4 +102,13 @@ MovieView.propTypes = {
   onBackClick: PropTypes.func.isRequired
 };
 
-export default MovieView;
+const mapStateToProps = ( state, ownProps) => {
+  return { movie: ownProps.movie, FavoriteMovies: state.FavoriteMovies }
+}
+
+mapDispatchToProps = dispatch => {
+  return bindActionCreators({ setFavoriteMovies: setFavoriteMovies }, dispatch)
+}
+    
+export default connect(mapStateToProps, mapDispatchToProps)(MovieView);
+

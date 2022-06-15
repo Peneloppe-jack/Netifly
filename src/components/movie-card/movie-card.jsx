@@ -32,11 +32,12 @@ onAddFavorite = (movie) => {
         })
         .then((response) => {
           console.log(response.data)
-            this.setState({
-                FavoriteMovies: response.data.this.props.setFavoriteMovies
-            });
+            this.props.setFavoriteMovies(
+               response.data.FavoriteMovies
+            );
             console.log(response);
             alert("Movie Added to list");
+            window.open('/profile', '_self');
         })
         .catch(function (error) {
             console.log(error);
@@ -75,8 +76,8 @@ render() {
     };
     
   
-    mapStateToProps = state => {
-      return { movie: state.movie, FavoriteMovies: state.FavoriteMovies }
+const mapStateToProps = ( state, ownProps) => {
+      return { movie: ownProps.movie, FavoriteMovies: state.FavoriteMovies }
   }
   
   mapDispatchToProps = dispatch => {

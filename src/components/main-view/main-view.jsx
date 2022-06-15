@@ -12,7 +12,7 @@ import MoviesList from '../movies-list/movies-list';
 //import { Button } from '../button-view/button-view';
 
 //import { MovieCard } from '../movie-card/movie-card.jsx';
-import { MovieView } from '../movie-view/movie-view.jsx';
+import  MovieView  from '../movie-view/movie-view.jsx';
 import { LoginView } from '../login-view/login-view.jsx';
 import { RegistrationView } from '../registration-view/registration-view.jsx';
 import { GenreView } from "../genre-view/genre-view.jsx";

@@ -20,7 +20,7 @@ export function setFilter(value) {
   };
 }
 
-export function SET_Favoritemovies(value) {
+export function setFavoriteMovies(value) {
   console.log('SET_FAVORITE_MOVIES action triggered');
   return {
     type: SET_FAVORITE_MOVIES,
